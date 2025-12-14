@@ -7,9 +7,26 @@ import { authenticate } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/", StoreController.list);
-router.post("/", authenticate, validateStore, validateRequest, StoreController.create); // admin only - protect further
-router.put("/:id", authenticate, validateStore, validateRequest, StoreController.update);
-router.delete("/:id", authenticate, StoreController.remove);
+router.get("/allstores",
+    StoreController.allStores
+);
+
+router.post("/createstore",
+    authenticate,
+    validateStore,
+    validateRequest,
+    StoreController.create
+); // admin only - protect further
+
+router.put("/updatestore/:id",
+    authenticate,
+    validateStore,
+    validateRequest,
+    StoreController.update);
+
+router.delete("/deletestore/:id",
+    authenticate,
+    StoreController.remove
+);
 
 export default router;

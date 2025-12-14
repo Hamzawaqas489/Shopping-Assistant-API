@@ -9,7 +9,6 @@ import productRoutes from "./routes/productRoutes.js";
 import inventoryRoutes from "./routes/inventoryRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
-import ratingRoutes from "./routes/ratingRoutes.js";
 import sharedListRoutes from "./routes/sharedListRoutes.js";
 import friendRoutes from "./routes/friendRoutes.js";
 
@@ -25,7 +24,6 @@ app.use("/api/products", productRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
-app.use("/api/ratings", ratingRoutes);
 app.use("/api/shared-lists", sharedListRoutes);
 app.use("/api/friends", friendRoutes);
 
