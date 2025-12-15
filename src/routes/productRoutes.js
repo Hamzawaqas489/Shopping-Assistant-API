@@ -7,10 +7,36 @@ import { authenticate } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/category/:categoryId", ProductController.listByCategory);
-router.get("/:id", ProductController.details);
-router.post("/", authenticate, validateProduct, validateRequest, ProductController.create);
-router.put("/:id", authenticate, validateProduct, validateRequest, ProductController.update);
-router.delete("/:id", authenticate, ProductController.remove);
+router.get("/allProducts",
+    authenticate,
+    ProductController.listByCategory
+);
+
+router.get("/productDetail/:id",
+    authenticate,
+    ProductController.details
+);
+
+router.post(
+  "/createProduct",
+  authenticate,
+  validateProduct,
+  validateRequest,
+  ProductController.create
+);
+
+router.put(
+  "/updateProduct/:id",
+  authenticate,
+  validateProduct,
+  validateRequest,
+  ProductController.update
+);
+
+router.delete(
+  "/deleteProduct/:id",
+  authenticate,
+  ProductController.remove
+);
 
 export default router;

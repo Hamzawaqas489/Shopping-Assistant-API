@@ -1,17 +1,17 @@
-// src/routes/orderRoutes.js
+// src/routes/trolleyRoutes.js
 import express from "express";
-import { OrderController } from "../controllers/orderController.js";
-import { validateOrder } from "../validator/orderValidator.js";
+import { TrolleyController } from "../controllers/trolleyController.js";
+import { validateAssignTrolley } from "../validator/trolleyValidator.js";
 import { validateRequest } from "../middleware/validateRequest.js";
 import { authenticate } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/place",
+router.post("/assign",
   authenticate,
-  validateOrder,
+  validateAssignTrolley,
   validateRequest,
-  OrderController.place
+  TrolleyController.assign
 );
 
 export default router;

@@ -1,40 +1,92 @@
-// src/services/friendService.js
 import { pool, sql } from "../database/db.js";
 
 export const FriendService = {
+
   sendRequest: async (senderId, receiverId) => {
-    const connection = await pool;
-    const result = await connection.request()
+    if (senderId === receiverId)
+      throw new Error("You cannot send a friend request to yourself");
+
+    const conn = await pool;
+
+    // Check if request already exists
+    const exists = await conn.request()
       .input("Sender", sql.Int, senderId)
       .input("Receiver", sql.Int, receiverId)
       .query(`
-        IF NOT EXISTS (SELECT 1 FROM Friendships WHERE CustomerID=@Sender AND FriendID=@Receiver)
-          INSERT INTO Friendships (CustomerID, FriendID, Status) VALUES (@Sender, @Receiver, 'Pending');
+        SELECT 1 FROM Friends
+        WHERE CustomerID=@Sender AND FriendID=@Receiver
       `);
-    return result.rowsAffected[0];
+
+    if (exists.recordset.length)
+      throw new Error("Friend request already exists");
+
+    await conn.request()
+      .input("Sender", sql.Int, senderId)
+      .input("Receiver", sql.Int, receiverId)
+      .query(`
+        INSERT INTO Friends (CustomerID, FriendID, Status)
+        VALUES (@Sender, @Receiver, 'Pending')
+      `);
+
+    return true;
   },
 
   respondRequest: async (senderId, receiverId, status) => {
-    const connection = await pool;
-    const result = await connection.request()
+    const conn = await pool;
+
+    const result = await conn.request()
       .input("Sender", sql.Int, senderId)
       .input("Receiver", sql.Int, receiverId)
-      .input("Status", sql.NVarChar(50), status)
-      .query(`UPDATE Friendships SET Status=@Status WHERE CustomerID=@Sender AND FriendID=@Receiver`);
-    return result.rowsAffected[0];
+      .input("Status", sql.NVarChar(20), status)
+      .query(`
+        UPDATE Friends
+        SET Status=@Status
+        WHERE CustomerID=@Sender AND FriendID=@Receiver
+          AND Status='Pending'
+      `);
+
+    if (result.rowsAffected[0] === 0)
+      throw new Error("Friend request not found or already processed");
+
+    return true;
   },
 
   getFriends: async (customerId) => {
-    const connection = await pool;
-    const result = await connection.request().input("CustomerID", sql.Int, customerId)
-      .query(`SELECT f.FriendID, c.Name, c.Email FROM Friendships f JOIN Customer c ON c.CustomerID = f.FriendID WHERE f.CustomerID=@CustomerID AND f.Status='Accepted'`);
+    const conn = await pool;
+
+    const result = await conn.request()
+      .input("CustomerID", sql.Int, customerId)
+      .query(`
+        SELECT 
+          u.UserID,
+          u.Name,
+          u.Email,
+          u.Phone
+        FROM Friends f
+        JOIN Users u ON u.UserID = f.FriendID
+        WHERE f.CustomerID=@CustomerID
+          AND f.Status='Accepted'
+      `);
+
     return result.recordset;
   },
 
   getRequests: async (customerId) => {
-    const connection = await pool;
-    const result = await connection.request().input("CustomerID", sql.Int, customerId)
-      .query(`SELECT f.CustomerID AS SenderID, c.Name AS SenderName FROM Friendships f JOIN Customer c ON c.CustomerID = f.CustomerID WHERE f.FriendID=@CustomerID AND f.Status='Pending'`);
+    const conn = await pool;
+
+    const result = await conn.request()
+      .input("CustomerID", sql.Int, customerId)
+      .query(`
+        SELECT 
+          u.UserID AS SenderID,
+          u.Name,
+          u.Email
+        FROM Friends f
+        JOIN Users u ON u.UserID = f.CustomerID
+        WHERE f.FriendID=@CustomerID
+          AND f.Status='Pending'
+      `);
+
     return result.recordset;
   }
 };

@@ -1,9 +1,21 @@
-// src/validator/sharedListValidator.js
 import { check } from "express-validator";
 
-export const validateSharedList = [
-  check("receiverCustomerId").isInt(),
-  check("items").isArray({ min: 1 }),
-  check("items.*.productId").isInt(),
-  check("items.*.quantity").isInt({ min: 1 })
+export const validateCreateSharedList = [
+  check("receiverCustomerId")
+    .isInt().withMessage("receiverCustomerId must be a valid user id"),
+
+  check("items")
+    .isArray({ min: 1 }).withMessage("items array is required"),
+
+  check("items.*.productId")
+    .isInt().withMessage("productId must be an integer"),
+
+  check("items.*.quantity")
+    .isInt({ min: 1 }).withMessage("quantity must be greater than 0")
+];
+
+export const validateUpdateSharedListStatus = [
+  check("status")
+    .isIn(["Accepted", "Declined"])
+    .withMessage("Status must be Accepted or Declined")
 ];
