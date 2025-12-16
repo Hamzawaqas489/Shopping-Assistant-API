@@ -20,6 +20,11 @@ router.get("/productDetail/:id",
 router.post(
   "/createProduct",
   authenticate,
+  (req, res, next) => {
+    req.uploadType = "product";
+    next();
+  },
+   upload.single("image"),
   validateProduct,
   validateRequest,
   ProductController.create
