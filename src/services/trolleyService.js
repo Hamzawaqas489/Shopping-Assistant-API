@@ -3,6 +3,90 @@ import { pool, sql } from "../database/db.js";
 
 export const TrolleyService = {
 
+  
+  getAll: async (storeId = null) => {
+    const conn = await pool;
+    const request = conn.request();
+
+    if (storeId) {
+      request.input("StoreID", sql.Int, storeId);
+    }
+
+    const result = await request.query(`
+      SELECT TrolleyID, QRCode, Status, StoreID
+      FROM Trolley
+      ${storeId ? "WHERE StoreID = @StoreID" : ""}
+      ORDER BY TrolleyID
+    `);
+
+    return result.recordset;
+  },
+
+  
+  getById: async (id) => {
+    const conn = await pool;
+
+    const result = await conn.request()
+      .input("TrolleyID", sql.Int, id)
+      .query(`
+        SELECT TrolleyID, QRCode, Status, StoreID
+        FROM Trolley
+        WHERE TrolleyID = @TrolleyID
+      `);
+
+    return result.recordset[0];
+  },
+
+  create: async ({ qrCode, status = "Available", storeId }) => {
+    const conn = await pool;
+
+    const result = await conn.request()
+      .input("QRCode", sql.NVarChar(300), qrCode)
+      .input("Status", sql.NVarChar(20), status)
+      .input("StoreID", sql.Int, storeId)
+      .query(`
+        INSERT INTO Trolley (QRCode, Status, StoreID)
+        VALUES (@QRCode, @Status, @StoreID)
+      `);
+
+    return result.rowsAffected[0];
+  },
+
+  
+  update: async (id, { qrCode, status, storeId }) => {
+    const conn = await pool;
+
+    const result = await conn.request()
+      .input("TrolleyID", sql.Int, id)
+      .input("QRCode", sql.NVarChar(300), qrCode)
+      .input("Status", sql.NVarChar(20), status)
+      .input("StoreID", sql.Int, storeId)
+      .query(`
+        UPDATE Trolley
+        SET QRCode = @QRCode,
+            Status = @Status,
+            StoreID = @StoreID
+        WHERE TrolleyID = @TrolleyID
+      `);
+
+    return result.rowsAffected[0];
+  },
+
+  
+  remove: async (id) => {
+    const conn = await pool;
+
+    const result = await conn.request()
+      .input("TrolleyID", sql.Int, id)
+      .query(`
+        DELETE FROM Trolley
+        WHERE TrolleyID = @TrolleyID
+      `);
+
+    return result.rowsAffected[0];
+  },
+
+  
   assignByQRCode: async ({ qrCode, customerId }) => {
     const conn = await pool;
     const tx = new sql.Transaction(conn);
@@ -12,8 +96,8 @@ export const TrolleyService = {
       const trolleyRes = await tx.request()
         .input("QRCode", sql.NVarChar(300), qrCode)
         .query(`
-          SELECT * FROM Trolley 
-          WHERE QRCode=@QRCode AND Status='Available'
+          SELECT * FROM Trolley
+          WHERE QRCode = @QRCode AND Status = 'Available'
         `);
 
       if (trolleyRes.recordset.length === 0)
@@ -23,10 +107,13 @@ export const TrolleyService = {
 
       await tx.request()
         .input("TrolleyID", sql.Int, trolley.TrolleyID)
-        .query(`UPDATE Trolley SET Status='InUse' WHERE TrolleyID=@TrolleyID`);
+        .query(`
+          UPDATE Trolley
+          SET Status = 'InUse'
+          WHERE TrolleyID = @TrolleyID
+        `);
 
       await tx.commit();
-
       return trolley;
 
     } catch (err) {
@@ -35,13 +122,16 @@ export const TrolleyService = {
     }
   },
 
+  
   release: async (trolleyId) => {
     const conn = await pool;
+
     const result = await conn.request()
       .input("TrolleyID", sql.Int, trolleyId)
       .query(`
-        UPDATE Trolley SET Status='Available'
-        WHERE TrolleyID=@TrolleyID
+        UPDATE Trolley
+        SET Status = 'Available'
+        WHERE TrolleyID = @TrolleyID
       `);
 
     return result.rowsAffected[0];

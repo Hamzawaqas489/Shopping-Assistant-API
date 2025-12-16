@@ -4,43 +4,42 @@ import { ProductController } from "../controllers/productController.js";
 import { validateProduct } from "../validator/productValidator.js";
 import { validateRequest } from "../middleware/validateRequest.js";
 import { authenticate } from "../middleware/authMiddleware.js";
+import { upload } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
 router.get("/allProducts",
-    authenticate,
-    ProductController.listByCategory
+  //authenticate,
+  ProductController.listByCategory
 );
 
 router.get("/productDetail/:id",
-    authenticate,
-    ProductController.details
+  //authenticate,
+  ProductController.details
 );
 
 router.post(
   "/createProduct",
-  authenticate,
+  //authenticate,
+  //validateProduct,
+  //validateRequest,
   (req, res, next) => {
     req.uploadType = "product";
     next();
   },
    upload.single("image"),
-  validateProduct,
-  validateRequest,
   ProductController.create
 );
 
 router.put(
   "/updateProduct/:id",
-  authenticate,
-  validateProduct,
-  validateRequest,
+  //authenticate,
   ProductController.update
 );
 
 router.delete(
   "/deleteProduct/:id",
-  authenticate,
+  //authenticate,
   ProductController.remove
 );
 

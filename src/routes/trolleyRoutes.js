@@ -7,11 +7,55 @@ import { authenticate } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/assign",
-  authenticate,
-  validateAssignTrolley,
-  validateRequest,
+
+router.get(
+  "/allTrolleys",
+  //authenticate,
+  TrolleyController.list
+);
+
+
+router.get(
+  "/trolleyDetail/:id",
+  //authenticate,
+  TrolleyController.details
+);
+
+
+router.post(
+  "/createTrolley",
+  //authenticate,
+  TrolleyController.create
+);
+
+
+router.put(
+  "/updateTrolley/:id",
+  //authenticate,
+  TrolleyController.update
+);
+
+
+router.delete(
+  "/deleteTrolley/:id",
+  //authenticate,
+  TrolleyController.remove
+);
+
+
+router.post(
+  "/assign",
+  //authenticate,
+  //validateAssignTrolley,
+  //validateRequest,
   TrolleyController.assign
+);
+
+
+router.patch(
+  "/release/:id",
+  //authenticate,
+  TrolleyController.release
 );
 
 export default router;

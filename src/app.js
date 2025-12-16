@@ -9,6 +9,7 @@ import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import sharedListRoutes from "./routes/sharedListRoutes.js";
 import friendRoutes from "./routes/friendRoutes.js";
+import userRoutes from "./routes/userRoutes.js"
 
 const app = express();
 app.use(cors());
@@ -27,5 +28,6 @@ app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/shared-lists", sharedListRoutes);
 app.use("/api/friends", friendRoutes);
+app.use("/api/user", userRoutes);
 
 export default app;

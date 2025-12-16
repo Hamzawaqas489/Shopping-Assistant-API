@@ -11,29 +11,29 @@ const router = express.Router();
 
 router.post(
   "/send",
-  authenticate,
-  validateSendRequest,
-  validateRequest,
+  //authenticate,
+  //validateSendRequest,
+  //validateRequest,
   FriendController.send
 );
 
 router.post(
   "/respond",
-  authenticate,
-  validateRespondRequest,
-  validateRequest,
+  //authenticate,
+  //validateRespondRequest,
+  //validateRequest,
   FriendController.respond
 );
 
 router.get(
   "/friends",
-  authenticate,
+  //authenticate,
   FriendController.listFriends
 );
 
 router.get(
   "/requests",
-  authenticate,
+  //authenticate,
   FriendController.listRequests
 );
 

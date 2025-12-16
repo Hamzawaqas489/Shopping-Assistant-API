@@ -11,29 +11,29 @@ const router = express.Router();
 
 router.post(
   "/createShareList",
-  authenticate,
-  validateCreateSharedList,
-  validateRequest,
+  //authenticate,
+  //validateCreateSharedList,
+  //validateRequest,
   SharedListController.create
 );
 
 router.get(
   "/received",
-  authenticate,
+  //authenticate,
   SharedListController.received
 );
 
 router.get(
   "list/:listId",
-  authenticate,
+  //authenticate,
   SharedListController.details
 );
 
 router.put(
   "list/:listId/status",
-  authenticate,
-  validateUpdateSharedListStatus,
-  validateRequest,
+  //authenticate,
+  //validateUpdateSharedListStatus,
+  //validateRequest,
   SharedListController.updateStatus
 );
 

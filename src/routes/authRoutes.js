@@ -8,13 +8,13 @@ import { validateRequest } from "../middleware/validateRequest.js";
 const router = express.Router();
 
 router.post("/signup",
-    validateSignUp,
-    validateRequest,
+    //validateSignUp,
+    //validateRequest,
     AuthController.signup);
 
 router.post("/login",
-    validateLogin,
-    validateRequest,
+    //validateLogin,
+    //validateRequest,
     AuthController.login);
 
 export default router;

@@ -12,20 +12,20 @@ router.get("/allstores",
 );
 
 router.post("/createstore",
-    authenticate,
-    validateStore,
-    validateRequest,
+    //authenticate,
+    //validateStore,
+    //validateRequest,
     StoreController.create
-); // admin only - protect further
+);
 
 router.put("/updatestore/:id",
-    authenticate,
-    validateStore,
-    validateRequest,
+    //authenticate,
+    //validateStore,
+    //validateRequest,
     StoreController.update);
 
 router.delete("/deletestore/:id",
-    authenticate,
+    //authenticate,
     StoreController.remove
 );
 

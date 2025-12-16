@@ -1,83 +1,167 @@
-// src/services/orderService.js
 import { pool, sql } from "../database/db.js";
 
 export const OrderService = {
 
-  placeOrder: async (data) => {
+  getAll: async () => {
+    const conn = await pool;
+    const result = await conn.request().query(`
+      SELECT * FROM Orders ORDER BY OrderDate DESC
+    `);
+    return result.recordset;
+  },
+
+  
+  getById: async (id) => {
+    const conn = await pool;
+
+    const order = await conn.request()
+      .input("OrderID", sql.Int, id)
+      .query(`SELECT * FROM Orders WHERE OrderID=@OrderID`);
+
+    if (!order.recordset.length) return null;
+
+    const items = await conn.request()
+      .input("OrderID", sql.Int, id)
+      .query(`
+        SELECT od.*, p.ProductName
+        FROM OrderDetails od
+        JOIN Products p ON p.ProductID = od.ProductID
+        WHERE od.OrderID=@OrderID
+      `);
+
+    return {
+      ...order.recordset[0],
+      items: items.recordset
+    };
+  },
+
+  
+  updatePaymentStatus: async (id, status) => {
+    const conn = await pool;
+    const result = await conn.request()
+      .input("OrderID", sql.Int, id)
+      .input("PaymentStatus", sql.NVarChar(20), status)
+      .query(`
+        UPDATE Orders
+        SET PaymentStatus=@PaymentStatus
+        WHERE OrderID=@OrderID
+      `);
+
+    return result.rowsAffected[0];
+  },
+
+  
+  remove: async (id) => {
+    const conn = await pool;
+
+    await conn.request()
+      .input("OrderID", sql.Int, id)
+      .query(`DELETE FROM OrderDetails WHERE OrderID=@OrderID`);
+
+    const result = await conn.request()
+      .input("OrderID", sql.Int, id)
+      .query(`DELETE FROM Orders WHERE OrderID=@OrderID`);
+
+    return result.rowsAffected[0];
+  },
+
+
+rateProduct: async ({ orderId, productId, customerId, rating }) => {
+  const conn = await pool;
+
+  // 1️⃣ Verify order belongs to customer & product exists in order
+  const verify = await conn.request()
+    .input("OrderID", sql.Int, orderId)
+    .input("ProductID", sql.Int, productId)
+    .input("CustomerID", sql.Int, customerId)
+    .query(`
+      SELECT od.Rating
+      FROM OrderDetails od
+      JOIN Orders o ON o.OrderID = od.OrderID
+      WHERE od.OrderID=@OrderID
+        AND od.ProductID=@ProductID
+        AND o.CustomerID=@CustomerID
+    `);
+
+  if (!verify.recordset.length)
+    throw new Error("Invalid order or product");
+
+  if (verify.recordset[0].Rating !== null)
+    throw new Error("Product already rated");
+
+  // 2️⃣ Update rating
+  const result = await conn.request()
+    .input("OrderID", sql.Int, orderId)
+    .input("ProductID", sql.Int, productId)
+    .input("Rating", sql.Int, rating)
+    .query(`
+      UPDATE OrderDetails
+      SET Rating=@Rating
+      WHERE OrderID=@OrderID AND ProductID=@ProductID
+    `);
+
+  return result.rowsAffected[0];
+},
+
+
+  createWithDetails: async (data) => {
     const conn = await pool;
     const tx = new sql.Transaction(conn);
     await tx.begin();
 
     try {
-      let total = 0;
+      const {
+        orderDate,
+        paymentStatus,
+        trolleyId,
+        customerId,
+        cashierId,
+        items
+      } = data;
 
-      // 1️⃣ Validate stock
-      for (const item of data.items) {
-        const stock = await tx.request()
-          .input("StoreID", sql.Int, data.storeId)
-          .input("ProductID", sql.Int, item.productId)
-          .query(`
-            SELECT StockQty, Price 
-            FROM StoreInventory
-            WHERE StoreID=@StoreID AND ProductID=@ProductID
-          `);
+      let totalAmount = 0;
 
-        if (!stock.recordset.length || stock.recordset[0].StockQty < item.quantity)
-          throw new Error("Insufficient stock for product " + item.productId);
+      // 🔹 Calculate total
+      items.forEach(i => {
+        totalAmount += i.price * i.quantity;
+      });
 
-        total += stock.recordset[0].Price * item.quantity;
-      }
-
-      // 2️⃣ Create order
+      // 🔹 Create Order
       const orderRes = await tx.request()
-        .input("CustomerID", sql.Int, data.customerId)
-        .input("TrolleyID", sql.Int, data.trolleyId)
-        .input("TotalAmount", sql.Decimal(10,2), total)
+        .input("OrderDate", sql.DateTime, orderDate)
+        .input("TotalAmount", sql.Decimal(10,2), totalAmount)
+        .input("PaymentStatus", sql.NVarChar(20), paymentStatus)
+        .input("TrolleyID", sql.Int, trolleyId)
+        .input("CustomerID", sql.Int, customerId)
+        .input("CashierID", sql.Int, cashierId)
         .query(`
-          INSERT INTO Orders (CustomerID, TrolleyID, TotalAmount, PaymentStatus)
-          VALUES (@CustomerID, @TrolleyID, @TotalAmount, 'Pending');
+          INSERT INTO Orders 
+          (OrderDate, TotalAmount, PaymentStatus, TrolleyID, CustomerID, CashierID)
+          VALUES
+          (@OrderDate, @TotalAmount, @PaymentStatus, @TrolleyID, @CustomerID, @CashierID);
           SELECT SCOPE_IDENTITY() AS OrderID;
         `);
 
       const orderId = orderRes.recordset[0].OrderID;
 
-      // 3️⃣ Insert items & deduct stock
-      for (const item of data.items) {
-
-        const priceRes = await tx.request()
-          .input("StoreID", sql.Int, data.storeId)
-          .input("ProductID", sql.Int, item.productId)
-          .query(`
-            SELECT Price FROM StoreInventory
-            WHERE StoreID=@StoreID AND ProductID=@ProductID
-          `);
-
-        const price = priceRes.recordset[0].Price;
-
+      // 🔹 Insert Order Details
+      for (const item of items) {
         await tx.request()
           .input("OrderID", sql.Int, orderId)
           .input("ProductID", sql.Int, item.productId)
           .input("Quantity", sql.Int, item.quantity)
-          .input("PriceAtPurchase", sql.Decimal(10,2), price)
+          .input("PriceAtPurchase", sql.Decimal(10,2), item.price)
           .query(`
-            INSERT INTO OrderDetails 
-            VALUES (@OrderID, @ProductID, @Quantity, @PriceAtPurchase, NULL)
-          `);
-
-        await tx.request()
-          .input("StoreID", sql.Int, data.storeId)
-          .input("ProductID", sql.Int, item.productId)
-          .input("Qty", sql.Int, item.quantity)
-          .query(`
-            UPDATE StoreInventory
-            SET StockQty = StockQty - @Qty
-            WHERE StoreID=@StoreID AND ProductID=@ProductID
+            INSERT INTO OrderDetails
+            (OrderID, ProductID, Quantity, PriceAtPurchase, Rating)
+            VALUES
+            (@OrderID, @ProductID, @Quantity, @PriceAtPurchase, NULL)
           `);
       }
 
-      // 4️⃣ Release trolley
+      // 🔹 Release trolley
       await tx.request()
-        .input("TrolleyID", sql.Int, data.trolleyId)
+        .input("TrolleyID", sql.Int, trolleyId)
         .query(`UPDATE Trolley SET Status='Available' WHERE TrolleyID=@TrolleyID`);
 
       await tx.commit();
@@ -88,4 +172,6 @@ export const OrderService = {
       throw err;
     }
   }
+
+
 };

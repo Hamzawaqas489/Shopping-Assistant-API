@@ -3,6 +3,7 @@ import { ProductService } from "../services/productService.js";
 
 export const ProductController = {
 
+  // List products by category and store
   listByCategory: async (req, res) => {
     try {
       const { categoryId, storeId } = req.query;
@@ -14,7 +15,7 @@ export const ProductController = {
 
       return res.status(200).json({
         status: true,
-        message: "Products Fetched Successfully.",
+        message: "Products fetched successfully.",
         data: products
       });
 
@@ -23,11 +24,12 @@ export const ProductController = {
       return res.status(500).json({
         status: false,
         message: "Failed to fetch products",
-        orror:err.message
+        error: err.message
       });
     }
   },
 
+  // Get product details by ID
   details: async (req, res) => {
     try {
       const product = await ProductService.getById(parseInt(req.params.id));
@@ -50,19 +52,25 @@ export const ProductController = {
       return res.status(500).json({
         status: false,
         message: "Failed to fetch product",
-        error:err.message
+        error: err.message
       });
     }
   },
 
+  // Create a new product
   create: async (req, res) => {
     try {
+      if (req.file) {
+        // Save image path
+        req.body.imageName = `uploads/products/${req.file.filename}`;
+      }
+
       const productId = await ProductService.create(req.body);
 
       return res.status(201).json({
         status: true,
         message: "Product created successfully",
-        data:productId
+        data: productId
       });
 
     } catch (err) {
@@ -74,8 +82,13 @@ export const ProductController = {
     }
   },
 
+  // Update existing product
   update: async (req, res) => {
     try {
+      if (req.file) {
+        req.body.imageUrl = `uploads/products/${req.file.filename}`;
+      }
+
       const updated = await ProductService.update(
         parseInt(req.params.id),
         req.body
@@ -102,6 +115,7 @@ export const ProductController = {
     }
   },
 
+  // Delete product
   remove: async (req, res) => {
     try {
       const removed = await ProductService.remove(parseInt(req.params.id));
