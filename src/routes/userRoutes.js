@@ -8,6 +8,14 @@ import { upload } from "../middleware/uploadMiddleware.js"; // Assuming you have
 
 const router = express.Router();
 
+router.post(
+  "/createUser/:id",
+  //authenticate, // uncomment if authentication is needed
+  //validateUser, // optional validation middleware
+  //validateRequest,
+  UserController.createUser
+);
+
 // Get user details by ID
 router.get(
   "/userDetail/:id",
@@ -22,6 +30,19 @@ router.put(
   //validateUser,
   //validateRequest,
   UserController.update
+);
+
+// Update only user role
+router.patch(
+  "/updateRole/:id",
+  //authenticate,
+  UserController.updateRole
+);
+
+router.get(
+  "/getCashiers",
+  //authenticate,
+  UserController.getCashiers
 );
 
 // Update only profile picture

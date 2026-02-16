@@ -21,26 +21,27 @@ export const StoreController = {
 
   create: async (req, res) => {
     try {
-      const effRows = await StoreService.create(req.body);
-      if (effRows>0)
-        {
-          return res.status(201).json({
-            status: true,
-            message: "Store created",
-            });
-        } 
-      else{
-        return res.status(400).json({
-          status: false,
-          message: "Store not created"
-        });
-      }
+      const storeLogo = req.file ? req.file.filename : null;
+
+      const result = await StoreService.create({
+        StoreName: req.body.StoreName,
+        StoreAddress: req.body.StoreAddress,
+        UserID: req.body.UserID,
+        StoreLogo: storeLogo,
+      });
+
+      return res.status(201).json({
+        status: true,
+        message: "Store created successfully",
+        data: result,
+      });
     } catch (err) {
       console.error(err);
       return res.status(500).json({
         status: false,
         message: "Error creating store",
-        error: err.message });
+        error: err.message,
+      });
     }
   },
 

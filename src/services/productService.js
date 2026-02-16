@@ -2,25 +2,14 @@ import { pool, sql } from "../database/db.js";
 
 export const ProductService = {
 
-  getByCategory: async (categoryId, storeId) => {
+  getByCategory: async (CategoryId) => {
     const conn = await pool;
     const result = await conn.request()
-      .input("CategoryID", sql.Int, categoryId)
-      .input("StoreID", sql.Int, storeId)
+      .input("CategoryID", sql.Int, CategoryId)
       .query(`
-        SELECT 
-          p.ProductID,
-          p.ProductName,
-          p.Company,
-          a.AttValue,
-          si.Price,
-          si.StockQty,
-          p.ImageName
-        FROM Products p
-        LEFT JOIN Attributes a ON p.ProductID = a.ProductID
-        JOIN StoreInventory si ON p.ProductID = si.ProductID
-        WHERE p.CategoryID = @CategoryID
-          AND si.StoreID = @StoreID
+        SELECT *
+        FROM Products 
+        WHERE CategoryID = @CategoryID
       `);
     return result.recordset;
   },
@@ -47,16 +36,15 @@ export const ProductService = {
 
       // Insert product
       const productResult = await transaction.request()
-        .input("ProductName", sql.NVarChar(150), data.productName)
-        .input("Company", sql.NVarChar(100), data.company)
-        .input("ExpiryDate", sql.Date, data.expiryDate)
-        .input("ImageName", sql.NVarChar(sql.MAX), data.imageName)
+        .input("ProductName", sql.NVarChar(150), data.ProductName)
+        .input("Company", sql.NVarChar(100), data.Company)
+        .input("ImageName", sql.NVarChar(sql.MAX), data.ImageName)
         .input("CategoryID", sql.Int, data.categoryId)
         .query(`
           INSERT INTO Products
-          (ProductName, Company, ExpiryDate, ImageName, CategoryID)
+          (ProductName, Company, ImageName, CategoryID)
           VALUES
-          (@ProductName, @Company, @ExpiryDate, @ImageName, @CategoryID);
+          (@ProductName, @Company, @ImageName, @CategoryID);
           SELECT SCOPE_IDENTITY() AS ProductID;
         `);
 
@@ -64,26 +52,14 @@ export const ProductService = {
 
       
         await transaction.request()
-          .input("AttName", sql.NVarChar(50), data.attName)
-          .input("AttValue", sql.NVarChar(50), data.attValue)
-          .input("CategoryID", sql.Int, data.categoryId)
+          .input("AttName", sql.NVarChar(50), data.AttName)
+          .input("AttValue", sql.NVarChar(50), data.AttValue)
+          .input("AttUnit", sql.NVarChar(20), data.AttUnit)
           .input("ProductID", sql.Int, productId)
           .query(`
-            INSERT INTO Attributes (AttName, AttValue, CategoryID, ProductID)
-            VALUES (@AttName, @AttValue, @CategoryID, @ProductID)
+            INSERT INTO Attributes (AttName, AttValue, AttUnit, ProductID)
+            VALUES (@AttName, @AttValue, @AttUnit, @ProductID)
           `);
-      
-
-      // Insert StoreInventory
-      await transaction.request()
-        .input("StoreID", sql.Int, data.storeId)
-        .input("ProductID", sql.Int, productId)
-        .input("StockQty", sql.Int, data.stockQty)
-        .input("Price", sql.Decimal(10,2), data.price)
-        .query(`
-          INSERT INTO StoreInventory (StoreID, ProductID, StockQty, Price)
-          VALUES (@StoreID, @ProductID, @StockQty, @Price)
-        `);
 
       await transaction.commit();
       return productId;

@@ -8,16 +8,49 @@ export const StoreService = {
     return result.recordset;
   },
 
-  create: async (data) => {
-    const connection = await pool;
-    const result = await connection
-      .request()
-      .input("StoreName", sql.NVarChar(100), data.storeName)
-      .query(`
-        INSERT INTO Store (StoreName)
-        VALUES (@StoreName);
-      `);
-    return result.rowsAffected[0];
+   create: async (data) => {
+    const poolConnection = await pool;
+    const transaction = new sql.Transaction(poolConnection);
+
+    try {
+      await transaction.begin();
+
+      const insertStoreRequest = new sql.Request(transaction);
+
+      const storeResult = await insertStoreRequest
+        .input("StoreName", sql.NVarChar(100), data.StoreName)
+        .input("StoreAddress", sql.NVarChar(255), data.StoreAddress)
+        .input("StoreLogo", sql.NVarChar(255), data.StoreLogo || null)
+        .query(`
+          INSERT INTO Store (StoreName, StoreAddress, StoreLogo)
+          OUTPUT INSERTED.StoreID
+          VALUES (@StoreName, @StoreAddress, @StoreLogo);
+        `);
+
+      const newStoreID = storeResult.recordset[0].StoreID;
+
+      if (!newStoreID) {
+        throw new Error("Failed to create store");
+      }
+
+      // Update user with StoreID
+      const updateUserRequest = new sql.Request(transaction);
+      await updateUserRequest
+        .input("UserID", sql.Int, data.UserID)
+        .input("StoreID", sql.Int, newStoreID)
+        .query(`
+          UPDATE Users
+          SET StoreID = @StoreID
+          WHERE UserID = @UserID;
+        `);
+
+      await transaction.commit();
+
+      return { StoreID: newStoreID };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   },
 
   update: async (id, data) => {

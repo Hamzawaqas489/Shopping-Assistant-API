@@ -8,7 +8,7 @@ import { upload } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
-router.get("/allProducts",
+router.get("/allProducts/:CategoryId",
   //authenticate,
   ProductController.listByCategory
 );
@@ -27,7 +27,7 @@ router.post(
     req.uploadType = "product";
     next();
   },
-   upload.single("image"),
+   upload.single("Image"),
   ProductController.create
 );
 

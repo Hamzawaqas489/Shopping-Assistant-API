@@ -1,6 +1,10 @@
 import { pool, sql } from "../database/db.js";
 import bcrypt from "bcrypt";
 
+import dotenv from "dotenv";
+dotenv.config();
+
+
 export const AuthService = {
 
   signup: async (data) => {
@@ -11,7 +15,7 @@ export const AuthService = {
       // 1️⃣ Check if email already exists
       const emailCheckRequest = new sql.Request(conn);
       const emailCheck = await emailCheckRequest
-        .input("Email", sql.NVarChar, data.email.toLowerCase())
+        .input("Email", sql.NVarChar, data.Email.toLowerCase())
         .query(`SELECT UserID FROM Users WHERE Email = @Email`);
 
       if (emailCheck.recordset.length > 0) {
@@ -19,23 +23,22 @@ export const AuthService = {
       }
 
       // 2️⃣ Hash password
-      const hashedPassword = await bcrypt.hash(data.password, 10);
+      const hashedPassword = await bcrypt.hash(data.Password, 10);
 
       // 3️⃣ Insert new user
       const insertRequest = new sql.Request(conn);
       const result = await insertRequest
-        .input("Name", sql.NVarChar, data.name.trim())
-        .input("Phone", sql.NVarChar, data.phone.trim())
-        .input("Email", sql.NVarChar, data.email.toLowerCase())
+        .input("Name", sql.NVarChar, data.Name)
+        .input("Phone", sql.NVarChar, data.Phone)
+        .input("Email", sql.NVarChar, data.Email)
         .input("Password", sql.NVarChar, hashedPassword)
-        .input("Role", sql.NVarChar, data.role)
-        .input("StoreID", sql.Int, data.storeId ?? null)
         .query(`
-          INSERT INTO Users (Name, Phone, Email, Password, Role, StoreID)
-          VALUES (@Name, @Phone, @Email, @Password, @Role, @StoreID)
+          INSERT INTO Users (Name, Phone, Email, Password)
+          OUTPUT INSERTED.UserID, INSERTED.Name, INSERTED.Email, INSERTED.Phone
+          VALUES (@Name, @Phone, @Email, @Password)
         `);
 
-      return result.rowsAffected[0]; // 1 if inserted successfully
+      return result.recordset[0];
 
     } catch (error) {
       throw error;
@@ -52,10 +55,10 @@ export const AuthService = {
       const result = await request
         .input("Email", sql.NVarChar, email.toLowerCase())
         .query(`
-          SELECT UserID, Name, Email, Password, Role, StoreID
+          SELECT UserID, Name, Phone, Email, Password, Role, ProfilePicName, StoreID
           FROM Users
           WHERE Email = @Email
-        `);
+          `);
 
       // 2️⃣ Check if user exists
       if (result.recordset.length === 0) return null;

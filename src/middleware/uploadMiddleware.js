@@ -18,6 +18,7 @@ const storage = multer.diskStorage({
 
     if (req.uploadType === "profile") folder = "profiles";
     if (req.uploadType === "product") folder = "products";
+    if (req.uploadType === "storelogo") folder = "storelogo";
 
     const finalPath = path.join(baseUploadPath, folder);
     ensureDir(finalPath);
@@ -34,17 +35,18 @@ const storage = multer.diskStorage({
 
 // File filter (security)
 const fileFilter = (req, file, cb) => {
-  const allowed = /jpeg|jpg|png|webp/;
-  const isValid =
-    allowed.test(file.mimetype) &&
-    allowed.test(path.extname(file.originalname).toLowerCase());
+  const allowedExt = /jpeg|jpg|png|webp/;
 
-  if (!isValid) {
-    cb(new Error("Only image files are allowed"));
+  const extname = path.extname(file.originalname).toLowerCase();
+  const isValidExt = allowedExt.test(extname);
+
+  if (!isValidExt) {
+    return cb(new Error("Only image files are allowed"));
   }
 
   cb(null, true);
 };
+
 
 export const upload = multer({
   storage,

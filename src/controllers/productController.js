@@ -6,11 +6,10 @@ export const ProductController = {
   // List products by category and store
   listByCategory: async (req, res) => {
     try {
-      const { categoryId, storeId } = req.query;
+      const { CategoryId} = req.params;
 
       const products = await ProductService.getByCategory(
-        parseInt(categoryId),
-        parseInt(storeId)
+        parseInt(CategoryId),
       );
 
       return res.status(200).json({
@@ -62,7 +61,7 @@ export const ProductController = {
     try {
       if (req.file) {
         // Save image path
-        req.body.imageName = `uploads/products/${req.file.filename}`;
+        req.body.ImageName = req.file ? req.file.filename : null;
       }
 
       const productId = await ProductService.create(req.body);
