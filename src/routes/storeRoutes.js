@@ -12,6 +12,11 @@ router.get("/allstores",
     StoreController.allStores
 );
 
+router.get("/getStoreById/:id",
+    //authenticate,
+    StoreController.getStoreById
+);
+
 router.post(
   "/createstore",
   (req, res, next) => {
@@ -19,6 +24,8 @@ router.post(
     next();
   },
   upload.single("storeLogo"), // field name from frontend
+  validateStore,
+  validateRequest,
   StoreController.create
 );
 

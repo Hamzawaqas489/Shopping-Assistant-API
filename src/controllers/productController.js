@@ -3,6 +3,98 @@ import { ProductService } from "../services/productService.js";
 
 export const ProductController = {
 
+  addBulkProducts: async (req, res) => {
+    try {
+      const { StoreID, Products } = req.body;
+
+      if (!StoreID || !Array.isArray(Products) || Products.length === 0) {
+        return res.status(400).json({
+          status: false,
+          message: "StoreID and Products array are required"
+        });
+      }
+
+      const result = await ProductService.addBulkProducts(StoreID, Products);
+
+      return res.status(201).json({
+        status: true,
+        message: "Inventory updated successfully",
+        inserted: result.inserted,
+        updated: result.updated
+      });
+
+    } catch (err) {
+      console.error("Bulk inventory error:", err);
+      return res.status(500).json({
+        status: false,
+        message: "Failed to update inventory",
+        error: err.message
+      });
+    }
+  },
+
+  getStoreProducts: async (req, res) => {
+    try {
+      const storeId = parseInt(req.params.storeId);
+
+      if (!storeId) {
+        return res.status(400).json({
+          status: false,
+          message: "Invalid store id"
+        });
+      }
+
+      const products = await ProductService.getStoreProducts(storeId);
+
+      return res.status(200).json({
+        status: true,
+        data: products
+      });
+
+    } catch (err) {
+      console.error("Get store products error:", err);
+
+      return res.status(500).json({
+        status: false,
+        message: "Failed to fetch store products",
+        error: err.message
+      });
+    }
+  },
+
+  updateStoreProduct : async (req, res) => {
+  try {
+    const { StoreID, ProductID, Price, StockQty } = req.body;
+
+
+    const updated = await ProductService.updateStoreProduct({
+      StoreID,
+      ProductID,
+      Price,
+      StockQty
+    });
+
+    if (!updated) {
+      return res.status(404).json({
+        status: false,
+        message: "Product not found in inventory",
+      });
+    }
+
+    return res.json({
+      status: true,
+      message: "Product updated successfully",
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+    }
+    );  }
+},
+
+
   // List products by category and store
   listByCategory: async (req, res) => {
     try {

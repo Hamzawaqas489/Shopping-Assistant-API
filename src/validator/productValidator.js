@@ -49,3 +49,11 @@ export const validateProduct = [
   check("price")
     .isFloat({ gt: 0 }).withMessage("Valid price is required")
 ];
+
+export const validateBulkProduct = [
+  check("StoreID").isInt({ gt: 0 }).withMessage("Valid StoreID is required"),
+  check("Products").isArray({ min: 1 }).withMessage("Products array is required and must not be empty"),
+  check("Products.*.ProductID").isInt({ gt: 0 }).withMessage("Valid ProductID is required"),
+  check("Products.*.Price").isFloat({ gt: 0 }).withMessage("Valid Price is required (> 0)"),
+  check("Products.*.StockQty").isInt({ min: 0 }).withMessage("Valid StockQty is required (>= 0)")
+];

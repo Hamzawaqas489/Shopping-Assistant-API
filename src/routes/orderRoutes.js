@@ -70,4 +70,16 @@ router.post(
   OrderController.createWithDetails
 );
 
+// --- NEW Shopping / Cashier Routes ---
+
+router.post("/session/start", OrderController.startShoppingSession);
+router.post("/session/add-item", OrderController.addItemToOrder);
+router.get("/session/:id/items", OrderController.getOrderSessionItems);
+router.post("/session/:id/checkout", OrderController.requestCheckout);
+router.post("/session/:id/confirm", OrderController.confirmOrder);
+
+router.get("/store/:storeId/active-trolleys", OrderController.getActiveTrolleys);
+router.get("/store/:storeId/checkout-requests", OrderController.getCheckoutRequests);
+router.get("/session/:orderId/list", OrderController.getSessionList);
+
 export default router;

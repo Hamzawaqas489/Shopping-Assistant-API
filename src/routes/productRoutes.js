@@ -1,12 +1,26 @@
 // src/routes/productRoutes.js
 import express from "express";
 import { ProductController } from "../controllers/productController.js";
-import { validateProduct } from "../validator/productValidator.js";
+import { validateProduct, validateBulkProduct } from "../validator/productValidator.js";
 import { validateRequest } from "../middleware/validateRequest.js";
 import { authenticate } from "../middleware/authMiddleware.js";
 import { upload } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
+
+// POST → add multiple products to store inventory
+router.post(
+  "/addBulkProducts",
+  validateBulkProduct,
+  validateRequest,
+  ProductController.addBulkProducts
+);
+
+// Get all products of a store
+router.get("/storeProducts/:storeId", ProductController.getStoreProducts);
+
+
+router.put("/updateStoreProduct", ProductController.updateStoreProduct);
 
 router.get("/allProducts/:CategoryId",
   //authenticate,

@@ -3,14 +3,67 @@ import { UserService } from "../services/userService.js";
 
 export const UserController = {
 
+  getOwner: async (req, res) => {
+    try {
+      const owner = await UserService.getOwner(parseInt(req.params.id));
+
+      if (!owner) {
+        return res.status(404).json({
+          status: false,
+          message: "Owner not found"
+        });
+      }
+
+      return res.status(200).json({
+        status: true,
+        message: "Owner fetched successfully.",
+        data: owner
+      });
+
+    } catch (err) {
+      console.error("Get owner error:", err);
+      return res.status(500).json({
+        status: false,
+        message: "Failed to fetch owner",
+        error: err.message
+      });
+    }
+  },
+
+  // Get all employees for a specific store
+  getStoreEmployees: async (req, res) => {
+    try {
+      const storeId = parseInt(req.params.storeId);
+      if (!storeId) {
+        return res.status(400).json({ status: false, message: "Store ID is required" });
+      }
+
+      const employees = await UserService.getStoreEmployees(storeId);
+
+      return res.status(200).json({
+        status: true,
+        message: "Employees fetched successfully.",
+        data: employees
+      });
+
+    } catch (err) {
+      console.error("Get store employees error:", err);
+      return res.status(500).json({
+        status: false,
+        message: "Failed to fetch employees",
+        error: err.message
+      });
+    }
+  },
+
    // Create a new user (Name, Phone, Email, Role)
-  createUser: async (req, res) => {
+  addEmployee: async (req, res) => {
     try {
       const StoreID = parseInt(req.params.id); // Assuming store ID is passed as a URL parameter
-      const { Name, Phone, Email, Role , } = req.body;
+      const ProfilePicName = req.file ? req.file.filename : null; // Handle optional profile picture upload
+      const { Name, Phone, Email, Role, Password } = req.body;
 
-
-      const created = await UserService.createUser({ Name, Phone, Email, Role, StoreID });
+      const created = await UserService.addEmployee({ Name, Phone, Email, Password, Role, StoreID, ProfilePicName });
 
       if (!created) {
         return res.status(500).json({
@@ -221,6 +274,42 @@ export const UserController = {
     return res.status(500).json({
       status: false,
       message: "Failed to update user role",
+      error: err.message
+    });
+  }
+},
+
+updateStatus: async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { Status } = req.body;
+
+    if (!Status) {
+      return res.status(400).json({
+        status: false,
+        message: "Status is required"
+      });
+    }
+
+    const updated = await UserService.updateStatus(userId, Status);
+
+    if (!updated) {
+      return res.status(404).json({
+        status: false,
+        message: "User not found"
+      });
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: "User status updated successfully"
+    });
+
+  } catch (err) {
+    console.error("Update status error:", err);
+    return res.status(500).json({
+      status: false,
+      message: "Failed to update user status",
       error: err.message
     });
   }

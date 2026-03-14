@@ -13,7 +13,7 @@ export const TrolleyService = {
     }
 
     const result = await request.query(`
-      SELECT TrolleyID, QRCode, Status, StoreID
+      SELECT TrolleyID, QRCodeData as QRCode, Status, StoreID
       FROM Trolley
       ${storeId ? "WHERE StoreID = @StoreID" : ""}
       ORDER BY TrolleyID
@@ -29,7 +29,7 @@ export const TrolleyService = {
     const result = await conn.request()
       .input("TrolleyID", sql.Int, id)
       .query(`
-        SELECT TrolleyID, QRCode, Status, StoreID
+        SELECT TrolleyID, QRCodeData as QRCode, Status, StoreID
         FROM Trolley
         WHERE TrolleyID = @TrolleyID
       `);
@@ -45,7 +45,7 @@ export const TrolleyService = {
       .input("Status", sql.NVarChar(20), status)
       .input("StoreID", sql.Int, storeId)
       .query(`
-        INSERT INTO Trolley (QRCode, Status, StoreID)
+        INSERT INTO Trolley (QRCodeData, Status, StoreID)
         VALUES (@QRCode, @Status, @StoreID)
       `);
 
@@ -63,7 +63,7 @@ export const TrolleyService = {
       .input("StoreID", sql.Int, storeId)
       .query(`
         UPDATE Trolley
-        SET QRCode = @QRCode,
+        SET QRCodeData = @QRCode,
             Status = @Status,
             StoreID = @StoreID
         WHERE TrolleyID = @TrolleyID
@@ -97,7 +97,7 @@ export const TrolleyService = {
         .input("QRCode", sql.NVarChar(300), qrCode)
         .query(`
           SELECT * FROM Trolley
-          WHERE QRCode = @QRCode AND Status = 'Available'
+          WHERE QRCodeData = @QRCode AND Status = 'Available'
         `);
 
       if (trolleyRes.recordset.length === 0)

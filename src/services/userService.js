@@ -1,21 +1,56 @@
 // src/services/userService.js
 import { pool, sql } from "../database/db.js";
+import { hashPassword } from "../utils/hash.js";
 
 export const UserService = {
 
-  createUser: async ({ Name, Phone, Email, Role , StoreID}) => {
+  getOwner: async (id) => {
     const connection = await pool;
+
+    const result = await connection.request()
+      .input("UserID", sql.Int, id)
+      .query(`
+        SELECT u.UserID, u.Name, u.Phone, u.Email, u.Role, u.StoreID, u.ProfilePicName
+        FROM Users u
+        WHERE u.UserID = @UserID AND u.Role = 'owner'
+      `);
+
+    return result.recordset[0];
+  },
+
+  // Get all employees for a specific store (excludes owner)
+  getStoreEmployees: async (storeId) => {
+    const connection = await pool;
+
+    const result = await connection.request()
+      .input("StoreID", sql.Int, storeId)
+      .query(`
+        SELECT UserID, Name, Phone, Email, Role, StoreID, ProfilePicName, Status
+        FROM Users
+        WHERE StoreID = @StoreID AND Role != 'owner'
+        ORDER BY Role, Name
+      `);
+
+    return result.recordset;
+  },
+
+  addEmployee: async ({ Name, Phone, Email, Password, Role, StoreID, ProfilePicName }) => {
+    const connection = await pool;
+
+    const hashedPassword = await hashPassword(Password);
 
     const result = await connection.request()
       .input("Name", sql.NVarChar(100), Name)
       .input("Phone", sql.NVarChar(20), Phone)
       .input("Email", sql.NVarChar(100), Email)
+      .input("Password", sql.NVarChar(255), hashedPassword)
       .input("Role", sql.NVarChar(20), Role)
       .input("Status", sql.NVarChar(20), "active") // Default status value
       .input("StoreID", sql.Int, StoreID || null) // Assuming StoreID is optional
+      .input("ProfilePicName", sql.NVarChar(255), ProfilePicName || null) // Optional profile picture filename
       .query(`
-        INSERT INTO Users (Name, Phone, Email, Role, Status, StoreID)
-        VALUES (@Name, @Phone, @Email, @Role, @Status, @StoreID)
+        INSERT INTO Users (Name, Phone, Email, Password, Role, Status, StoreID, ProfilePicName)
+        VALUES (@Name, @Phone, @Email, @Password, @Role, @Status, @StoreID, @ProfilePicName)
       `);
 
     // Return the number of rows affected (should be 1 if successful)
@@ -100,7 +135,7 @@ export const UserService = {
 
     const result = await connection.request()
       .query(`
-        SELECT UserID, Name, Phone, Email, Role, StoreID, ProfilePicName
+        SELECT UserID, Name, Phone, Email, Role, StoreID, ProfilePicName, Status
         FROM Users
         WHERE Role = 'cashier'
       `);
@@ -117,6 +152,21 @@ export const UserService = {
     .query(`
       UPDATE Users
       SET Role = @Role
+      WHERE UserID = @UserID
+    `);
+
+  return result.rowsAffected[0];
+},
+
+updateStatus: async (id, status) => {
+  const connection = await pool;
+
+  const result = await connection.request()
+    .input("UserID", sql.Int, id)
+    .input("Status", sql.NVarChar(20), status)
+    .query(`
+      UPDATE Users
+      SET Status = @Status
       WHERE UserID = @UserID
     `);
 

@@ -12,10 +12,17 @@ const router = express.Router();
 router.post(
   "/createShareList",
   //authenticate,
-  //validateCreateSharedList,
-  //validateRequest,
+  validateCreateSharedList,
+  validateRequest,
   SharedListController.create
 );
+
+router.get(
+  "/myLists/:userId",
+  // authenticate,  // Enable this if your routes are protected
+  SharedListController.getUserLists
+);
+
 
 router.get(
   "/received",
@@ -35,6 +42,17 @@ router.put(
   //validateUpdateSharedListStatus,
   //validateRequest,
   SharedListController.updateStatus
+);
+
+router.post(
+  "/copy/:listId",
+  //authenticate,
+  SharedListController.copy
+);
+
+router.delete(
+  "/:listId/:userId",
+  SharedListController.delete
 );
 
 export default router;

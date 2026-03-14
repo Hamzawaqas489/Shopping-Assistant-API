@@ -1,10 +1,12 @@
 // src/services/storeService.js
+import { get } from "http";
 import { pool, sql } from "../database/db.js";
 
 export const StoreService = {
   getAll: async () => {
     const connection = await pool;
-    const result = await connection.request().query(`SELECT StoreID, StoreName FROM Store`);
+    const result = await connection.request()
+    .query(`SELECT StoreID, StoreName, StoreAddress, StoreLogo FROM Store`);
     return result.recordset;
   },
 
@@ -51,6 +53,15 @@ export const StoreService = {
       await transaction.rollback();
       throw error;
     }
+  },
+
+  getById: async (id) => {
+    const connection = await pool;
+    const result = await connection
+      .request()
+      .input("StoreID", sql.Int, id)
+      .query(`SELECT * FROM Store WHERE StoreID = @StoreID`);
+    return result.recordset[0];
   },
 
   update: async (id, data) => {

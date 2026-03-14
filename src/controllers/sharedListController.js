@@ -3,23 +3,53 @@ import { SharedListService } from "../services/sharedListService.js";
 export const SharedListController = {
 
   create: async (req, res) => {
-    try {
-      const listId = await SharedListService.create({
-        senderCustomerId: req.user.id,
-        receiverCustomerId: req.body.receiverCustomerId,
-        items: req.body.items
-      });
+  try {
+    const listId = await SharedListService.create({
+      listName: req.body.listName,
+      senderCustomerId: req.user?.id || req.body.senderCustomerId,
+      receiverCustomerId: req.body.receiverCustomerId ?? null,
+      storeId: req.body.storeId, // Pass the storeId
+      items: req.body.items
+    });
 
-      return res.status(201).json({
+    return res.status(201).json({
+      status: true,
+      message: "List created successfully",
+      listId
+    });
+
+  } catch (err) {
+    return res.status(400).json({
+      status: false,
+      message: err.message
+    });
+  }
+},
+
+  getUserLists: async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+
+      if (!userId) {
+        return res.status(400).json({
+          status: false,
+          message: "User ID is required",
+        });
+      }
+
+      const lists = await SharedListService.getUserLists(userId);
+
+      return res.status(200).json({
         status: true,
-        message: "Shared list created successfully",
-        listId
+        message: "Shopping lists retrieved successfully",
+        data: lists,
       });
 
     } catch (err) {
-      return res.status(400).json({
+      console.error("Error fetching user lists:", err);
+      return res.status(500).json({
         status: false,
-        message: err.message
+        message: err.message || "Failed to retrieve shopping lists",
       });
     }
   },
@@ -86,6 +116,53 @@ export const SharedListController = {
         status: false,
         message: err.message
       });
+    }
+  },
+
+  copy: async (req, res) => {
+    try {
+      const listId = parseInt(req.params.listId);
+      const newStoreId = parseInt(req.body.storeId);
+
+      if (!listId || !newStoreId) {
+        return res.status(400).json({ status: false, message: "listId and storeId are required" });
+      }
+
+      const newListId = await SharedListService.copyList(listId, newStoreId);
+
+      return res.status(201).json({
+        status: true,
+        message: "List copied successfully",
+        newListId
+      });
+    } catch (err) {
+      return res.status(500).json({
+        status: false,
+        message: err.message || "Failed to copy list"
+      });
+    }
+  },
+
+  delete: async (req, res) => {
+    try {
+      const listId = parseInt(req.params.listId);
+      const userId = parseInt(req.params.userId);
+
+      if (!listId || !userId) {
+        return res.status(400).json({ status: false, message: "listId and userId are required" });
+      }
+
+      await SharedListService.deleteList(listId, userId);
+
+      return res.status(200).json({
+        status: true,
+        message: "List deleted successfully"
+      });
+    } catch (err) {
+       return res.status(500).json({
+         status: false,
+         message: err.message || "Failed to delete list"
+       });
     }
   }
 };

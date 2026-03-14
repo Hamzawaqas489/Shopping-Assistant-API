@@ -1,4 +1,5 @@
 // src/controllers/storeController.js
+import { get } from "http";
 import { StoreService } from "../services/storeService.js";
 
 export const StoreController = {
@@ -16,6 +17,32 @@ export const StoreController = {
         status: false,
         message: "Error fetching stores",
         error: err.message });
+    }
+  },
+
+  getStoreById: async (req, res) => {
+    try {
+      const store = await StoreService.getById(req.params.id);
+
+      if (!store) {
+        return res.status(404).json({
+          status: false,
+          message: "Store not found"
+        });
+      }
+
+      return res.status(200).json({
+        status: true,
+        message: "Store fetched successfully",
+        data: store
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({
+        status: false,
+        message: "Error fetching store",
+        error: err.message
+      });
     }
   },
 

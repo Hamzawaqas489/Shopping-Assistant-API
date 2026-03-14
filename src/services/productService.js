@@ -2,6 +2,125 @@ import { pool, sql } from "../database/db.js";
 
 export const ProductService = {
 
+  addBulkProducts: async (storeId, products) => {
+    const connection = await pool;
+    const transaction = new sql.Transaction(connection);
+
+    let inserted = 0;
+    let updated = 0;
+
+    try {
+      await transaction.begin();
+
+      for (const p of products) {
+        const request = new sql.Request(transaction);
+
+        const check = await request
+          .input("StoreID", sql.Int, storeId)
+          .input("ProductID", sql.Int, p.ProductID)
+          .query(`
+            SELECT COUNT(*) as count
+            FROM StoreInventory
+            WHERE StoreID = @StoreID AND ProductID = @ProductID
+          `);
+
+        const exists = check.recordset[0].count > 0;
+
+        const req2 = new sql.Request(transaction);
+
+        if (exists) {
+          await req2
+            .input("StoreID", sql.Int, storeId)
+            .input("ProductID", sql.Int, p.ProductID)
+            .input("Price", sql.Decimal(10,2), p.Price)
+            .input("StockQty", sql.Int, p.StockQty)
+            .query(`
+              UPDATE StoreInventory
+              SET Price = @Price,
+                  StockQty = @StockQty
+              WHERE StoreID = @StoreID AND ProductID = @ProductID
+            `);
+
+          updated++;
+
+        } else {
+          await req2
+            .input("StoreID", sql.Int, storeId)
+            .input("ProductID", sql.Int, p.ProductID)
+            .input("Price", sql.Decimal(10,2), p.Price)
+            .input("StockQty", sql.Int, p.StockQty)
+            .query(`
+              INSERT INTO StoreInventory (StoreID, ProductID, Price, StockQty)
+              VALUES (@StoreID, @ProductID, @Price, @StockQty)
+            `);
+
+          inserted++;
+        }
+      }
+
+      await transaction.commit();
+
+      return { inserted, updated };
+
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  },
+
+  getStoreProducts: async (storeId) => {
+    const connection = await pool;
+
+    const result = await connection.request()
+      .input("StoreID", sql.Int, storeId)
+      .query(`
+        SELECT
+            SI.ProductID,
+            P.ProductName,
+            P.Company,
+            P.ImageName,
+            SI.StockQty,
+            SI.Price,
+            p.CategoryID
+        FROM StoreInventory SI
+        INNER JOIN Products P
+            ON SI.ProductID = P.ProductID
+        WHERE SI.StoreID = @StoreID
+        ORDER BY P.ProductName
+      `);
+
+    return result.recordset;
+  },
+
+  updateStoreProduct: async (data) => {
+    const connection = await pool;
+    const transaction = new sql.Transaction(connection);
+
+    try {
+      await transaction.begin();
+
+      const request = new sql.Request(transaction);
+
+      const result = await request
+        .input("StoreID", sql.Int, data.StoreID)
+        .input("ProductID", sql.Int, data.ProductID)
+        .input("Price", sql.Decimal(10,2), data.Price)
+        .input("StockQty", sql.Int, data.StockQty)
+        .query(`
+          UPDATE StoreInventory
+          SET Price = @Price,
+              StockQty = @StockQty
+          WHERE StoreID = @StoreID AND ProductID = @ProductID
+        `);
+
+      await transaction.commit();
+      return result.rowsAffected[0] > 0;
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  },
+
   getByCategory: async (CategoryId) => {
     const conn = await pool;
     const result = await conn.request()
