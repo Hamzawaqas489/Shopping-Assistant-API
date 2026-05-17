@@ -230,5 +230,50 @@ export const ProductController = {
         message: "Failed to delete product"
       });
     }
+  },
+
+  getProductByQrCode: async (req, res) => {
+    try {
+      const { qrCode } = req.params;
+      const product = await ProductService.getProductByQrCode(qrCode);
+
+      if (!product) {
+        return res.status(404).json({
+          status: false,
+          message: "Product not found"
+        });
+      }
+
+      return res.status(200).json({
+        status: true,
+        message: "Product found",
+        data: product
+      });
+    } catch (err) {
+      console.error("Get product by QR code error:", err);
+      return res.status(500).json({
+        status: false,
+        message: "Failed to fetch product"
+      });
+    }
+  },
+  addProductByQr: async (req, res) => {
+    try {
+      const { productId } = req.params;
+      const { StoreID, Price, StockQty } = req.body;
+
+      await ProductService.addProductByQr(productId, { StoreID, Price, StockQty });
+
+      return res.status(200).json({
+        status: true,
+        message: "Product added by QR code successfully"
+      });
+    } catch (err) {
+      console.error("Add product by QR code error:", err);
+      return res.status(500).json({
+        status: false,
+        message: "Failed to add product"
+      });
+    }
   }
 };

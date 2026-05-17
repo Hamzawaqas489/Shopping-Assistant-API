@@ -1,3 +1,4 @@
+import { Result } from "express-validator";
 import { pool, sql } from "../database/db.js";
 
 export const ProductService = {
@@ -279,6 +280,50 @@ export const ProductService = {
       await transaction.commit();
       return result.rowsAffected[0];
 
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  },
+
+  getProductByQrCode: async (qrCode) => {
+    const conn = await pool;
+    const result = await conn.request()
+      .input("QRCode", sql.NVarChar(100), qrCode)
+      .query(`
+        Select * from products where QRCode = @QRCode
+      `);
+    return result.recordset[0] ?? null;
+  },
+
+  addProductByQr: async (productId, data) => {
+    const conn = await pool;
+    const transaction = new sql.Transaction(conn);
+
+    try {
+      await transaction.begin();
+      // Check if product exists
+      const productCheck = await transaction.request()
+        .input("ProductID", sql.Int, productId)
+        .query(`SELECT ProductID FROM Products WHERE ProductID=@ProductID`);
+        
+      if (productCheck.recordset.length === 0) {
+        await transaction.rollback();
+        return { success: false, message: "Product not found" };
+      }
+
+      // Add to StoreInventory with default values (can be updated later)
+      await transaction.request()
+        .input("StoreID", sql.Int, data.StoreID)
+        .input("ProductID", sql.Int, productId)
+        .input("Price", sql.Decimal(10,2), data.Price || 0)
+        .input("StockQty", sql.Int, data.StockQty || 0)
+        .query(`
+          INSERT INTO StoreInventory (StoreID, ProductID, Price, StockQty)
+          VALUES (@StoreID, @ProductID, @Price, @StockQty)
+        `);
+      await transaction.commit();
+      return { success: true, message: "Product added to store inventory" };
     } catch (err) {
       await transaction.rollback();
       throw err;

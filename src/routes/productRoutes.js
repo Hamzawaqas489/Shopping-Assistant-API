@@ -57,4 +57,14 @@ router.delete(
   ProductController.remove
 );
 
+router.get("/getProductByQr/:qrCode",
+   ProductController.getProductByQrCode
+  );
+
+router.post(
+  "/addProductByQr/:productId",
+  //authenticate,
+  ProductController.addProductByQr
+);
+
 export default router;
