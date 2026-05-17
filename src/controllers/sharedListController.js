@@ -9,7 +9,8 @@ export const SharedListController = {
       senderCustomerId: req.user?.id || req.body.senderCustomerId,
       receiverCustomerId: req.body.receiverCustomerId ?? null,
       storeId: req.body.storeId, // Pass the storeId
-      items: req.body.items
+      items: req.body.items,
+      budget: req.body.budget
     });
 
     return res.status(201).json({

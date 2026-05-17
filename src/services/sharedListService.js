@@ -2,7 +2,7 @@ import { pool, sql } from "../database/db.js";
 
 export const SharedListService = {
 
-  create: async ({ listName, senderCustomerId, receiverCustomerId, storeId, items }) => {
+  create: async ({ listName, senderCustomerId, receiverCustomerId, storeId, items, budget }) => {
 
   const conn = await pool;
   const tx = new sql.Transaction(conn);
@@ -37,9 +37,10 @@ export const SharedListService = {
       .input("SenderID", sql.Int, senderCustomerId)
       .input("ReceiverID", sql.Int, receiverCustomerId)
       .input("StoreID", sql.Int, storeId)
+      .input("Budget", sql.Decimal(10,2), budget || null)
       .query(`
-        INSERT INTO SharedList (ListName, SenderCustomerID, ReceiverCustomerID, StoreID)
-        VALUES (@ListName, @SenderID, @ReceiverID, @StoreID);
+        INSERT INTO SharedList (ListName, SenderCustomerID, ReceiverCustomerID, StoreID, Budget)
+        VALUES (@ListName, @SenderID, @ReceiverID, @StoreID, @Budget);
 
         SELECT SCOPE_IDENTITY() AS ListID;
       `);
@@ -90,6 +91,7 @@ export const SharedListService = {
             sl.SenderCustomerID, 
             sl.ReceiverCustomerID,
             sl.StoreID,
+            sl.Budget,
             s.StoreName,
             (
                 SELECT 
@@ -122,6 +124,7 @@ export const SharedListService = {
           SenderCustomerID: row.SenderCustomerID,
           ReceiverCustomerID: row.ReceiverCustomerID,
           StoreID: row.StoreID,
+          Budget: row.Budget,
           StoreName: row.StoreName,
           // Parse the JSON string from SQL Server back into an array 
           Items: row.ItemsJson ? JSON.parse(row.ItemsJson) : []

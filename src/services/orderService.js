@@ -834,7 +834,7 @@ export const OrderService = {
     const listRes = await conn.request()
       .input("ListID", sql.Int, ListID)
       .query(`
-        SELECT ListID, ListName, Status, StoreID
+        SELECT ListID, ListName, Status, StoreID, Budget
         FROM SharedList
         WHERE ListID = @ListID
       `);
@@ -873,6 +873,7 @@ export const OrderService = {
       listId: list.ListID,
       listName: list.ListName,
       status: list.Status,
+      budget: list.Budget,
       items: itemsRes.recordset,
     };
   },

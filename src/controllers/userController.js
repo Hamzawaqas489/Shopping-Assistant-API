@@ -317,7 +317,7 @@ updateStatus: async (req, res) => {
 
 checkContacts: async (req, res) => {
   try {
-    const { contacts } = req.body;
+    const { contacts, userId } = req.body;
 
     if (!contacts || !Array.isArray(contacts)) {
       return res.status(400).json({
@@ -326,7 +326,7 @@ checkContacts: async (req, res) => {
       });
     }
 
-    const registeredUsers = await UserService.checkContacts(contacts);
+    const registeredUsers = await UserService.checkContacts(contacts, userId);
 
     return res.status(200).json({
       status: true,

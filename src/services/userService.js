@@ -173,7 +173,7 @@ updateStatus: async (id, status) => {
   return result.rowsAffected[0];
 },
 
-checkContacts: async (phoneNumbers) => {
+checkContacts: async (phoneNumbers, userId) => {
   if (!phoneNumbers || phoneNumbers.length === 0) return [];
   
   const connection = await pool;
@@ -181,16 +181,21 @@ checkContacts: async (phoneNumbers) => {
   
   const params = [];
   phoneNumbers.forEach((phone, index) => {
-    // Strip everything except plus and digits, or just pass as is (usually contacts come varied)
     const paramName = `phone${index}`;
     request.input(paramName, sql.NVarChar(20), phone);
     params.push(`@${paramName}`);
   });
 
+  if (userId) {
+    request.input("CurrentUserID", sql.Int, userId);
+  }
+
   const query = `
     SELECT UserID, Name, Phone, ProfilePicName
     FROM Users
     WHERE Phone IN (${params.join(',')})
+      AND Role = 'customer'
+      ${userId ? "AND UserID != @CurrentUserID" : ""}
   `;
 
   const result = await request.query(query);
