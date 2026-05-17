@@ -54,6 +54,25 @@ export const SharedListController = {
     }
   },
 
+  shareToFriend: async (req, res) => {
+    try {
+      const listId = parseInt(req.params.listId);
+      const friendId = parseInt(req.params.friendId);
+
+      await SharedListService.shareToFriend(listId, friendId);
+
+      return res.status(200).json({
+        status: true,
+        message: "List shared with friend successfully"
+      });
+    } catch (err) {
+      return res.status(400).json({
+        status: false,
+        message: err.message
+      });
+    }
+  },
+
   received: async (req, res) => {
     try {
       const lists = await SharedListService.getReceived(req.user.id);

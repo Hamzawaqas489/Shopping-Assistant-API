@@ -33,23 +33,59 @@ export const FriendService = {
 
   respondRequest: async (senderId, receiverId, status) => {
     const conn = await pool;
+    const transaction = new sql.Transaction(conn);
 
-    const result = await conn.request()
-      .input("Sender", sql.Int, senderId)
-      .input("Receiver", sql.Int, receiverId)
-      .input("Status", sql.NVarChar(20), status)
-      .query(`
-        UPDATE Friends
-        SET Status=@Status
-        WHERE CustomerID=@Sender AND FriendID=@Receiver
-          AND Status='Pending'
-      `);
+    try {
+        await transaction.begin();
 
-    if (result.rowsAffected[0] === 0)
-      throw new Error("Friend request not found or already processed");
+        const request = new sql.Request(transaction);
 
-    return true;
-  },
+        // Update original request
+        const result = await request
+            .input("Sender", sql.Int, senderId)
+            .input("Receiver", sql.Int, receiverId)
+            .input("Status", sql.NVarChar(20), status)
+            .query(`
+                UPDATE Friends
+                SET Status=@Status
+                WHERE CustomerID=@Sender 
+                  AND FriendID=@Receiver
+                  AND Status='Pending'
+            `);
+
+        if (result.rowsAffected[0] === 0) {
+            throw new Error("Friend request not found or already processed");
+        }
+
+        // If accepted, create reverse friendship
+        if (status === 'Accepted') {
+
+            await new sql.Request(transaction)
+                .input("CustomerID", sql.Int, receiverId)
+                .input("FriendID", sql.Int, senderId)
+                .input("Status", sql.NVarChar(20), 'Accepted')
+                .query(`
+                    IF NOT EXISTS (
+                        SELECT 1 
+                        FROM Friends 
+                        WHERE CustomerID=@CustomerID 
+                          AND FriendID=@FriendID
+                    )
+                    INSERT INTO Friends (CustomerID, FriendID, Status)
+                    VALUES (@CustomerID, @FriendID, @Status)
+                `);
+        }
+
+        await transaction.commit();
+
+        return true;
+
+    } catch (err) {
+
+        await transaction.rollback();
+        throw err;
+    }
+},
 
   getFriends: async (customerId) => {
     const conn = await pool;

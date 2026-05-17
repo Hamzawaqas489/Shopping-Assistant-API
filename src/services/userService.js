@@ -173,5 +173,29 @@ updateStatus: async (id, status) => {
   return result.rowsAffected[0];
 },
 
+checkContacts: async (phoneNumbers) => {
+  if (!phoneNumbers || phoneNumbers.length === 0) return [];
+  
+  const connection = await pool;
+  const request = connection.request();
+  
+  const params = [];
+  phoneNumbers.forEach((phone, index) => {
+    // Strip everything except plus and digits, or just pass as is (usually contacts come varied)
+    const paramName = `phone${index}`;
+    request.input(paramName, sql.NVarChar(20), phone);
+    params.push(`@${paramName}`);
+  });
+
+  const query = `
+    SELECT UserID, Name, Phone, ProfilePicName
+    FROM Users
+    WHERE Phone IN (${params.join(',')})
+  `;
+
+  const result = await request.query(query);
+  return result.recordset;
+},
+
 
 };

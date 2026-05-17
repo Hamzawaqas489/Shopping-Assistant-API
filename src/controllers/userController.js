@@ -313,6 +313,35 @@ updateStatus: async (req, res) => {
       error: err.message
     });
   }
+},
+
+checkContacts: async (req, res) => {
+  try {
+    const { contacts } = req.body;
+
+    if (!contacts || !Array.isArray(contacts)) {
+      return res.status(400).json({
+        status: false,
+        message: "Contacts array is required"
+      });
+    }
+
+    const registeredUsers = await UserService.checkContacts(contacts);
+
+    return res.status(200).json({
+      status: true,
+      message: "Contacts checked successfully",
+      data: registeredUsers
+    });
+
+  } catch (err) {
+    console.error("Check contacts error:", err);
+    return res.status(500).json({
+      status: false,
+      message: "Failed to check contacts",
+      error: err.message
+    });
+  }
 }
 
 };

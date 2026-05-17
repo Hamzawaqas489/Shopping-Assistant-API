@@ -79,6 +79,7 @@ export const ProductService = {
             P.ProductName,
             P.Company,
             P.ImageName,
+            P.QRCode,
             SI.StockQty,
             SI.Price,
             p.CategoryID
@@ -158,12 +159,14 @@ export const ProductService = {
         .input("ProductName", sql.NVarChar(150), data.ProductName)
         .input("Company", sql.NVarChar(100), data.Company)
         .input("ImageName", sql.NVarChar(sql.MAX), data.ImageName)
-        .input("CategoryID", sql.Int, data.categoryId)
+        .input("QRCode", sql.NVarChar(100), data.QRCode || data.qrCode || null)
+        .input("CategoryID", sql.Int, data.categoryId || data.CategoryID)
+        .input("ExpiryDate", sql.Date, data.ExpiryDate)
         .query(`
           INSERT INTO Products
-          (ProductName, Company, ImageName, CategoryID)
+          (ProductName, Company, ImageName, QRCode, CategoryID, ExpiryDate)
           VALUES
-          (@ProductName, @Company, @ImageName, @CategoryID);
+          (@ProductName, @Company, @ImageName, @QRCode, @CategoryID, @ExpiryDate);
           SELECT SCOPE_IDENTITY() AS ProductID;
         `);
 
@@ -199,17 +202,17 @@ export const ProductService = {
       // Update product
       const productUpdate = await transaction.request()
         .input("ProductID", sql.Int, id)
-        .input("ProductName", sql.NVarChar(150), data.productName)
-        .input("Company", sql.NVarChar(100), data.company)
-        .input("ExpiryDate", sql.Date, data.expiryDate)
-        .input("ImageName", sql.NVarChar(sql.MAX), data.imageName)
-        .input("CategoryID", sql.Int, data.categoryId)
+        .input("ProductName", sql.NVarChar(150), data.productName || data.ProductName)
+        .input("Company", sql.NVarChar(100), data.company || data.Company)
+        .input("ImageName", sql.NVarChar(sql.MAX), data.imageName || data.ImageName)
+        .input("QRCode", sql.NVarChar(100), data.qrCode || data.QRCode || null)
+        .input("CategoryID", sql.Int, data.categoryId || data.CategoryID)
         .query(`
           UPDATE Products
           SET ProductName=@ProductName,
               Company=@Company,
-              ExpiryDate=@ExpiryDate,
               ImageName=@ImageName,
+              QRCode=@QRCode,
               CategoryID=@CategoryID
           WHERE ProductID=@ProductID
         `);

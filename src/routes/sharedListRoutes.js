@@ -23,6 +23,12 @@ router.get(
   SharedListController.getUserLists
 );
 
+router.put(
+  "/shareListToFriend/:listId/:friendId",
+  //authenticate,
+  SharedListController.shareToFriend
+);
+
 
 router.get(
   "/received",

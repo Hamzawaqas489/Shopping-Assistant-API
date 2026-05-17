@@ -132,33 +132,9 @@ export const SharedListService = {
     } catch (err) {
       throw err;
     }
-  }
-,
-
-  getReceived: async (customerId) => {
-    const conn = await pool;
-
-    const result = await conn.request()
-      .input("CustomerID", sql.Int, customerId)
-      .query(`
-        SELECT
-          sl.ListID,
-          sl.ListName,
-          sl.Status,
-          sl.SharedDate,
-          sl.StoreID,
-          s.StoreName,
-          u.UserID AS SenderID,
-          u.Name AS SenderName
-        FROM SharedList sl
-        JOIN Users u ON u.UserID = sl.SenderCustomerID
-        LEFT JOIN Store s ON s.StoreID = sl.StoreID
-        WHERE sl.ReceiverCustomerID=@CustomerID
-        ORDER BY sl.SharedDate DESC
-      `);
-
-    return result.recordset;
   },
+
+  
 
   getDetails: async (listId, userId) => {
     const conn = await pool;
@@ -296,5 +272,30 @@ export const SharedListService = {
       await tx.rollback();
       throw err;
     }
+  },
+
+  shareToFriend: async (listId, friendId) => {
+    const conn = await pool;
+    try {
+      const result = await conn.request()
+        .input("ListID", sql.Int, listId)
+        .input("ReceiverCustomerID", sql.Int, friendId)
+        .query(`
+          UPDATE SharedList
+          SET ReceiverCustomerID=@ReceiverCustomerID, Status='Pending'
+          WHERE ListID=@ListID
+            AND (ReceiverCustomerID IS NULL OR ReceiverCustomerID=@ReceiverCustomerID)
+        `);
+
+      if (result.rowsAffected[0] === 0) {
+        throw new Error("List not found or already shared with another friend");
+      }
+      return true;
+    }
+    catch (err) {
+      throw err;
+    }
+
   }
+
 };

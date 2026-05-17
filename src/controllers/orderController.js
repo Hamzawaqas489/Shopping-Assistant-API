@@ -64,14 +64,18 @@ export const OrderController = {
 
   // Create order with details
   createWithDetails: async (req, res) => {
-    const items =  JSON.parse(req.body.items);
     try {
+      const items = typeof req.body.items === "string"
+        ? JSON.parse(req.body.items)
+        : req.body.items;
+
       const orderId = await OrderService.createWithDetails({
         orderDate: req.body.orderDate,
         paymentStatus: req.body.paymentStatus,
         trolleyId: parseInt(req.body.trolleyId),
         customerId: parseInt(req.body.customerId),
         cashierId: parseInt(req.body.cashierId),
+        storeId: req.body.storeId ? parseInt(req.body.storeId) : null,
         items // multipart JSON
       });
 
@@ -93,15 +97,20 @@ export const OrderController = {
   // --- NEW: Shopping Session (Trolley) mapping endpoints ---
   startShoppingSession: async (req, res) => {
     try {
-      const { trolleyId, customerId, listId, storeId } = req.body;
+      const { trolleyId, trolleyCode, customerId, listId } = req.body;
       const orderId = await OrderService.startShoppingSession({
-        trolleyId: parseInt(trolleyId),
+        trolleyId: trolleyId ? parseInt(trolleyId) : null,
+        trolleyCode: trolleyCode || req.body.qrCode || req.body.code || null,
         customerId: parseInt(customerId),
         listId: listId ? parseInt(listId) : null,
-        storeId: storeId ? parseInt(storeId) : null,
       });
 
-      res.status(201).json({ status: true, orderId, message: "Shopping session started." });
+      res.status(201).json({
+        status: true,
+        orderId,
+        data: { orderId },
+        message: "Shopping session started."
+      });
     } catch (err) {
       res.status(400).json({ status: false, message: err.message });
     }
@@ -109,14 +118,35 @@ export const OrderController = {
 
   addItemToOrder: async (req, res) => {
     try {
-      const { orderId, productId, quantity } = req.body;
+      const { orderId, sessionId, productId, quantity } = req.body;
       const result = await OrderService.addItemToOrder({
-        orderId: parseInt(orderId),
+        orderId: parseInt(orderId || sessionId),
         productId: parseInt(productId),
         quantity: quantity ? parseInt(quantity) : 1
       });
 
       res.json({ status: true, message: "Item added to cart.", data: result });
+    } catch (err) {
+      res.status(400).json({ status: false, message: err.message });
+    }
+  },
+
+  scanItemToOrder: async (req, res) => {
+    try {
+      const sessionId = req.body.sessionId || req.body.orderId;
+      const code = req.body.code || req.body.qrCode || req.body.barcode || req.body.scannedCode;
+
+      const result = await OrderService.scanItemToOrder({
+        orderId: parseInt(sessionId),
+        code: code?.toString().trim(),
+        quantity: req.body.quantity ? parseInt(req.body.quantity) : 1
+      });
+
+      res.status(201).json({
+        status: true,
+        message: "Scanned product added to cart.",
+        data: result
+      });
     } catch (err) {
       res.status(400).json({ status: false, message: err.message });
     }
@@ -137,7 +167,11 @@ export const OrderController = {
       if (!success) {
          return res.status(404).json({ status: false, message: "Order not found" });
       }
-      res.json({ status: true, message: "Checkout requested successfully!" });
+      res.json({
+        status: true,
+        message: "Checkout requested successfully!",
+        data: { orderId: parseInt(req.params.id) }
+      });
     } catch(err) {
       res.status(400).json({ status: false, message: err.message });
     }
@@ -145,7 +179,9 @@ export const OrderController = {
 
   confirmOrder: async (req, res) => {
     try {
-      const cashierId = req.user ? req.user.userId : 1; // Basic fallback if no auth
+      const cashierId = req.body.cashierId
+        ? parseInt(req.body.cashierId)
+        : req.user?.userId || null;
       await OrderService.confirmOrder(parseInt(req.params.id), cashierId);
       res.json({ status: true, message: "Order confirmed successfully!" });
     } catch(err) {

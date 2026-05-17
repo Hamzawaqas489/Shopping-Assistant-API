@@ -4,7 +4,7 @@ export const FriendController = {
 
   send: async (req, res) => {
     try {
-      await FriendService.sendRequest(req.user.id, req.body.receiverId);
+      await FriendService.sendRequest(req.body.senderId, req.body.receiverId);
 
       return res.status(200).json({
         status: true,
@@ -22,7 +22,7 @@ export const FriendController = {
     try {
       await FriendService.respondRequest(
         req.body.senderId,
-        req.user.id,
+        req.body.receiverId,
         req.body.status
       );
 
@@ -40,7 +40,7 @@ export const FriendController = {
 
   listFriends: async (req, res) => {
     try {
-      const friends = await FriendService.getFriends(req.user.id);
+      const friends = await FriendService.getFriends(req.query.userId);
 
       return res.status(200).json({
         status: true,
@@ -57,7 +57,7 @@ export const FriendController = {
 
   listRequests: async (req, res) => {
     try {
-      const requests = await FriendService.getRequests(req.user.id);
+      const requests = await FriendService.getRequests(req.query.userId);
 
       return res.status(200).json({
         status: true,

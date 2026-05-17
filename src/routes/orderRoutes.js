@@ -74,6 +74,7 @@ router.post(
 
 router.post("/session/start", OrderController.startShoppingSession);
 router.post("/session/add-item", OrderController.addItemToOrder);
+router.post("/session/scan-item", OrderController.scanItemToOrder);
 router.get("/session/:id/items", OrderController.getOrderSessionItems);
 router.post("/session/:id/checkout", OrderController.requestCheckout);
 router.post("/session/:id/confirm", OrderController.confirmOrder);

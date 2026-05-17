@@ -89,4 +89,11 @@ router.delete(
   UserController.remove
 );
 
+// Check contacts
+router.post(
+  "/checkContacts",
+  //authenticate,
+  UserController.checkContacts
+);
+
 export default router;
