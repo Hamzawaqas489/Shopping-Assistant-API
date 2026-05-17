@@ -56,6 +56,12 @@ router.post(
   SharedListController.copy
 );
 
+router.put(
+  "/:listId/items",
+  //authenticate,
+  SharedListController.updateItems
+);
+
 router.delete(
   "/:listId/:userId",
   SharedListController.delete

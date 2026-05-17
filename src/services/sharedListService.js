@@ -296,6 +296,85 @@ export const SharedListService = {
       throw err;
     }
 
-  }
+  },
 
+  updateListItems: async (listId, items, userId) => {
+    const conn = await pool;
+    const tx = new sql.Transaction(conn);
+    await tx.begin();
+
+    try {
+      // 1. Verify ownership
+      const listRes = await tx.request()
+        .input("ListID", sql.Int, listId)
+        .query(`SELECT SenderCustomerID, ReceiverCustomerID FROM SharedList WHERE ListID=@ListID`);
+      
+      const list = listRes.recordset[0];
+      if (!list) throw new Error("List not found");
+
+      if (list.SenderCustomerID !== userId && list.ReceiverCustomerID !== userId) {
+         throw new Error("Unauthorized to edit this list");
+      }
+
+      // 2. Fetch existing items
+      const existingItemsRes = await tx.request()
+        .input("ListID", sql.Int, listId)
+        .query(`SELECT ProductID, Quantity, IsPurchased FROM SharedListItems WHERE ListID=@ListID`);
+      
+      const existingItems = existingItemsRes.recordset;
+
+      // 3. Update, Insert, Delete
+      const itemsMap = new Map();
+      items.forEach(item => {
+        itemsMap.set(parseInt(item.productId), item);
+      });
+
+      // Update and Delete
+      for (const existing of existingItems) {
+        const prodId = existing.ProductID;
+        if (itemsMap.has(prodId)) {
+          // Update quantity (preserve IsPurchased implicitly by just updating Quantity, though here we update quantity)
+          const updatedItem = itemsMap.get(prodId);
+          await tx.request()
+            .input("ListID", sql.Int, listId)
+            .input("ProductID", sql.Int, prodId)
+            .input("Quantity", sql.Decimal(10,2), updatedItem.quantity)
+            .query(`
+              UPDATE SharedListItems 
+              SET Quantity = @Quantity 
+              WHERE ListID = @ListID AND ProductID = @ProductID
+            `);
+          itemsMap.delete(prodId); // Processed
+        } else {
+          // Delete
+          await tx.request()
+            .input("ListID", sql.Int, listId)
+            .input("ProductID", sql.Int, prodId)
+            .query(`
+              DELETE FROM SharedListItems 
+              WHERE ListID = @ListID AND ProductID = @ProductID
+            `);
+        }
+      }
+
+      // Insert remaining new items
+      for (const [prodId, newItem] of itemsMap.entries()) {
+        await tx.request()
+          .input("ListID", sql.Int, listId)
+          .input("ProductID", sql.Int, prodId)
+          .input("Quantity", sql.Decimal(10,2), newItem.quantity)
+          .query(`
+            INSERT INTO SharedListItems (ListID, ProductID, Quantity, IsPurchased)
+            VALUES (@ListID, @ProductID, @Quantity, 0)
+          `);
+      }
+
+      await tx.commit();
+      return true;
+
+    } catch (err) {
+      await tx.rollback();
+      throw err;
+    }
+  }
 };

@@ -183,5 +183,33 @@ export const SharedListController = {
          message: err.message || "Failed to delete list"
        });
     }
+  },
+
+  updateItems: async (req, res) => {
+    try {
+      const listId = parseInt(req.params.listId);
+      const items = req.body.items;
+      const userId = req.user?.id || req.body.userId || req.body.senderCustomerId; // fallback to body if auth is commented
+
+      if (!listId || !items || !userId) {
+        return res.status(400).json({
+          status: false,
+          message: "listId, items, and userId are required"
+        });
+      }
+
+      await SharedListService.updateListItems(listId, items, userId);
+
+      return res.status(200).json({
+        status: true,
+        message: "List items updated successfully"
+      });
+
+    } catch (err) {
+      return res.status(500).json({
+        status: false,
+        message: err.message || "Failed to update list items"
+      });
+    }
   }
 };
