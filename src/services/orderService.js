@@ -569,19 +569,47 @@ export const OrderService = {
       }
 
       if (order.ListID) {
-        await new sql.Request(tx)
+        const listRes = await new sql.Request(tx)
           .input("ListID", sql.Int, order.ListID)
           .input("ProductID", sql.Int, productId)
-          .input("Quantity", sql.Decimal(10, 2), nextQuantity > 0 ? nextQuantity : 0)
           .query(`
-            UPDATE SharedListItems
-            SET IsPurchased = CASE
-              WHEN @Quantity >= Quantity AND @Quantity > 0 THEN 1
-              ELSE 0
-            END
-            WHERE ListID = @ListID
-              AND ProductID = @ProductID
+            SELECT Quantity FROM SharedListItems 
+            WHERE ListID = @ListID AND ProductID = @ProductID
           `);
+
+        if (listRes.recordset.length) {
+          await new sql.Request(tx)
+            .input("ListID", sql.Int, order.ListID)
+            .input("ProductID", sql.Int, productId)
+            .input("Quantity", sql.Decimal(10, 2), nextQuantity > 0 ? nextQuantity : 0)
+            .query(`
+              UPDATE SharedListItems
+              SET IsPurchased = CASE
+                WHEN @Quantity >= Quantity AND @Quantity > 0 THEN 1
+                ELSE 0
+              END
+              WHERE ListID = @ListID
+                AND ProductID = @ProductID
+            `);
+        } else if (nextQuantity > 0) {
+          await new sql.Request(tx)
+            .input("ListID", sql.Int, order.ListID)
+            .input("ProductID", sql.Int, productId)
+            .input("Quantity", sql.Decimal(10, 2), nextQuantity)
+            .query(`
+              INSERT INTO SharedListItems (ListID, ProductID, Quantity, IsPurchased, IsExtra)
+              VALUES (@ListID, @ProductID, @Quantity, 1, 1)
+            `);
+        } else {
+          // If nextQuantity is <= 0 and it was an extra item, we should probably delete it
+          await new sql.Request(tx)
+            .input("ListID", sql.Int, order.ListID)
+            .input("ProductID", sql.Int, productId)
+            .query(`
+              DELETE FROM SharedListItems 
+              WHERE ListID = @ListID AND ProductID = @ProductID AND IsExtra = 1
+            `);
+        }
       }
 
       await refreshOrderTotal(tx, orderId);

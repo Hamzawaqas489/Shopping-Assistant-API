@@ -97,6 +97,7 @@ export const SharedListService = {
                     sli.ProductID,
                     sli.Quantity,
                     sli.IsPurchased,
+                    sli.IsExtra,
                     p.ProductName,
                     COALESCE(si.Price, 0) AS Price, 
                     p.ImageName AS ProductImage
@@ -161,6 +162,7 @@ export const SharedListService = {
           sli.ProductID,
           sli.Quantity,
           sli.IsPurchased,
+          sli.IsExtra,
           p.ProductName,
           COALESCE(si.Price, 0) AS Price,
           p.ImageName AS ProductImage
