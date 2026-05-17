@@ -815,6 +815,125 @@ export const OrderService = {
     return result.recordset.map((order) => summarizeOrder(order, true));
   },
 
+  getCustomerPastOrders: async (customerId) => {
+    const conn = await pool;
+    const result = await conn.request()
+      .input("CustomerID", sql.Int, customerId)
+      .input("Completed", sql.NVarChar(30), ORDER_STATUS.completed)
+      .query(`
+        SELECT
+          o.OrderID,
+          o.OrderDate,
+          o.TotalAmount,
+          o.StoreID,
+          s.StoreName,
+          s.StoreAddress,
+          ISNULL((
+            SELECT SUM(od.Quantity)
+            FROM OrderDetails od
+            WHERE od.OrderID = o.OrderID
+          ), 0) AS ItemsCount
+        FROM Orders o
+        LEFT JOIN Store s ON s.StoreID = o.StoreID
+        WHERE o.CustomerID = @CustomerID
+          AND o.PaymentStatus = @Completed
+        ORDER BY o.OrderDate DESC
+      `);
+    return result.recordset;
+  },
+
+  getReorderDetails: async (orderId) => {
+    const conn = await pool;
+
+    const orderRes = await conn.request()
+      .input("OrderID", sql.Int, orderId)
+      .query(`SELECT OrderID, StoreID, CustomerID FROM Orders WHERE OrderID = @OrderID`);
+
+    const order = orderRes.recordset[0];
+    if (!order) throw new Error("Order not found.");
+
+    const itemsRes = await conn.request()
+      .input("OrderID", sql.Int, orderId)
+      .input("StoreID", sql.Int, order.StoreID)
+      .query(`
+        SELECT
+          od.ProductID,
+          od.Quantity,
+          od.PriceAtPurchase AS OldPrice,
+          ISNULL(si.Price, od.PriceAtPurchase) AS CurrentPrice,
+          ISNULL(si.StockQty, 0) AS StockQty,
+          p.ProductName,
+          p.Company,
+          p.ImageName
+        FROM OrderDetails od
+        INNER JOIN Products p ON p.ProductID = od.ProductID
+        LEFT JOIN StoreInventory si
+          ON si.ProductID = od.ProductID
+         AND si.StoreID = @StoreID
+        WHERE od.OrderID = @OrderID
+        ORDER BY p.ProductName
+      `);
+
+    return {
+      orderId: order.OrderID,
+      storeId: order.StoreID,
+      customerId: order.CustomerID,
+      items: itemsRes.recordset,
+    };
+  },
+
+  submitReorder: async ({ customerId, storeId, originalOrderId, items }) => {
+    const conn = await pool;
+    const tx = new sql.Transaction(conn);
+    await tx.begin();
+
+    try {
+      const totalAmount = items.reduce(
+        (sum, item) => sum + toNumber(item.currentPrice) * toNumber(item.quantity),
+        0
+      );
+
+      const orderRes = await new sql.Request(tx)
+        .input("OrderDate", sql.DateTime, new Date())
+        .input("TotalAmount", sql.Decimal(10, 2), totalAmount)
+        .input("PaymentStatus", sql.NVarChar(30), ORDER_STATUS.pendingCheckout)
+        .input("CustomerID", sql.Int, customerId)
+        .input("StoreID", sql.Int, storeId)
+        .input("CheckoutRequestedAt", sql.DateTime, new Date())
+        .query(`
+          INSERT INTO Orders (
+            OrderDate, TotalAmount, PaymentStatus,
+            CustomerID, StoreID, CheckoutRequestedAt
+          )
+          VALUES (
+            @OrderDate, @TotalAmount, @PaymentStatus,
+            @CustomerID, @StoreID, @CheckoutRequestedAt
+          );
+          SELECT SCOPE_IDENTITY() AS OrderID;
+        `);
+
+      const newOrderId = orderRes.recordset[0].OrderID;
+
+      for (const item of items) {
+        await new sql.Request(tx)
+          .input("OrderID", sql.Int, newOrderId)
+          .input("ProductID", sql.Int, item.productId)
+          .input("Quantity", sql.Int, item.quantity)
+          .input("PriceAtPurchase", sql.Decimal(10, 2), item.currentPrice)
+          .query(`
+            INSERT INTO OrderDetails (OrderID, ProductID, Quantity, PriceAtPurchase, Rating)
+            VALUES (@OrderID, @ProductID, @Quantity, @PriceAtPurchase, NULL)
+          `);
+      }
+
+      await tx.commit();
+      return newOrderId;
+    } catch (err) {
+      await tx.rollback();
+      throw err;
+    }
+  },
+
   getSessionList: async (orderId) => {
     const conn = await pool;
 

@@ -204,8 +204,8 @@ export const OrderController = {
        const storeId = parseInt(req.params.storeId);
        const data = await OrderService.getCheckoutRequests(storeId);
        res.json({ status: true, data });
-    } catch (err) {
-       res.status(400).json({ status: false, message: err.message });
+    } catch(err) {
+      res.status(400).json({ status: false, message: err.message });
     }
   },
 
@@ -217,5 +217,43 @@ export const OrderController = {
     } catch (err) {
       res.status(400).json({ status: false, message: err.message });
     }
-  }
+  },
+
+  getCustomerPastOrders: async (req, res) => {
+    try {
+      const customerId = parseInt(req.params.customerId);
+      const data = await OrderService.getCustomerPastOrders(customerId);
+      res.json({ status: true, data });
+    } catch (err) {
+      res.status(400).json({ status: false, message: err.message });
+    }
+  },
+
+  getReorderDetails: async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      const data = await OrderService.getReorderDetails(orderId);
+      res.json({ status: true, data });
+    } catch (err) {
+      res.status(400).json({ status: false, message: err.message });
+    }
+  },
+
+  submitReorder: async (req, res) => {
+    try {
+      const { customerId, storeId, originalOrderId, items } = req.body;
+      if (!customerId || !storeId || !items || !items.length) {
+        return res.status(400).json({ status: false, message: "customerId, storeId and items are required." });
+      }
+      const newOrderId = await OrderService.submitReorder({
+        customerId: parseInt(customerId),
+        storeId: parseInt(storeId),
+        originalOrderId: originalOrderId ? parseInt(originalOrderId) : null,
+        items,
+      });
+      res.status(201).json({ status: true, message: "Re-order submitted successfully!", data: { orderId: newOrderId } });
+    } catch (err) {
+      res.status(400).json({ status: false, message: err.message });
+    }
+  },
 };

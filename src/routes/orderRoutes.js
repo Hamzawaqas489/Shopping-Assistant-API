@@ -83,4 +83,9 @@ router.get("/store/:storeId/active-trolleys", OrderController.getActiveTrolleys)
 router.get("/store/:storeId/checkout-requests", OrderController.getCheckoutRequests);
 router.get("/session/:orderId/list", OrderController.getSessionList);
 
+// --- Past Orders & Re-order Routes ---
+router.get("/customer/:customerId/pastOrders", OrderController.getCustomerPastOrders);
+router.get("/:id/reorderDetails", OrderController.getReorderDetails);
+router.post("/reorder", OrderController.submitReorder);
+
 export default router;
