@@ -135,6 +135,32 @@ export const ProductService = {
     return result.recordset;
   },
 
+  getAllProducts: async () => {
+    const conn = await pool;
+    const result = await conn.request()
+      .query(`
+        SELECT p.*, c.CategoryName as Category 
+        FROM Products p
+        LEFT JOIN Category c ON p.CategoryID = c.CategoryID
+        ORDER BY p.ProductName
+      `);
+    return result.recordset;
+  },
+
+  getProductPrices: async (productId) => {
+    const conn = await pool;
+    const result = await conn.request()
+      .input("ProductID", sql.Int, productId)
+      .query(`
+        SELECT S.StoreID, S.StoreName, S.StoreAddress as Address, SI.Price, SI.StockQty
+        FROM StoreInventory SI
+        INNER JOIN Store S ON SI.StoreID = S.StoreID
+        WHERE SI.ProductID = @ProductID
+        ORDER BY SI.Price ASC
+      `);
+    return result.recordset;
+  },
+
   getById: async (id) => {
     const conn = await pool;
     const result = await conn.request()

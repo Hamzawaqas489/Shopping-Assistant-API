@@ -27,6 +27,10 @@ router.get("/allProducts/:CategoryId",
   ProductController.listByCategory
 );
 
+router.get("/getAllProducts", ProductController.getAllProducts);
+
+router.get("/productPrices/:productId", ProductController.getProductPrices);
+
 router.get("/productDetail/:id",
   //authenticate,
   ProductController.details

@@ -120,6 +120,55 @@ export const ProductController = {
     }
   },
 
+  getAllProducts: async (req, res) => {
+    try {
+      const products = await ProductService.getAllProducts();
+
+      return res.status(200).json({
+        status: true,
+        message: "Products fetched successfully.",
+        data: products
+      });
+
+    } catch (err) {
+      console.error("Get all products error:", err);
+      return res.status(500).json({
+        status: false,
+        message: "Failed to fetch all products",
+        error: err.message
+      });
+    }
+  },
+
+  getProductPrices: async (req, res) => {
+    try {
+      const { productId } = req.params;
+
+      if (!productId) {
+        return res.status(400).json({
+          status: false,
+          message: "Invalid product id"
+        });
+      }
+
+      const prices = await ProductService.getProductPrices(parseInt(productId));
+
+      return res.status(200).json({
+        status: true,
+        message: "Product prices fetched successfully.",
+        data: prices
+      });
+
+    } catch (err) {
+      console.error("Get product prices error:", err);
+      return res.status(500).json({
+        status: false,
+        message: "Failed to fetch product prices",
+        error: err.message
+      });
+    }
+  },
+
   // Get product details by ID
   details: async (req, res) => {
     try {
