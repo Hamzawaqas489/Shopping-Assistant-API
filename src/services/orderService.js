@@ -103,6 +103,7 @@ const orderSummarySelect = `
     o.TrolleyID,
     o.ListID,
     o.TotalAmount,
+    o.CustomerID,
     u.Name AS CustomerName,
     u.Email AS CustomerEmail,
     sl.ListName AS LinkedListName,
@@ -687,7 +688,7 @@ export const OrderService = {
     return result.rowsAffected[0] > 0;
   },
 
-  confirmOrder: async (orderId, cashierId) => {
+  confirmOrder: async (orderId, cashierId, loyaltyDiscountAmount = 0) => {
     const conn = await pool;
     const tx = new sql.Transaction(conn);
     await tx.begin();
@@ -755,15 +756,23 @@ export const OrderService = {
 
       await refreshOrderTotal(tx, orderId);
 
+      const discountValue = parseFloat(loyaltyDiscountAmount) || 0;
+
       await new sql.Request(tx)
         .input("OrderID", sql.Int, orderId)
         .input("CashierID", sql.Int, cashierId || null)
         .input("Completed", sql.NVarChar(30), ORDER_STATUS.completed)
+        .input("LoyaltyDiscountAmount", sql.Decimal(10, 2), discountValue)
         .query(`
           UPDATE Orders
           SET PaymentStatus = @Completed,
               CashierID = @CashierID,
-              CompletedAt = GETDATE()
+              CompletedAt = GETDATE(),
+              LoyaltyDiscountAmount = @LoyaltyDiscountAmount,
+              TotalAmount = CASE 
+                WHEN TotalAmount - @LoyaltyDiscountAmount < 0 THEN 0 
+                ELSE TotalAmount - @LoyaltyDiscountAmount 
+              END
           WHERE OrderID = @OrderID
         `);
 
@@ -819,14 +828,34 @@ export const OrderService = {
     const result = await conn.request()
       .input("StoreID", sql.Int, storeId)
       .input("PendingCheckout", sql.NVarChar(30), ORDER_STATUS.pendingCheckout)
+      .input("Completed", sql.NVarChar(30), ORDER_STATUS.completed)
       .query(`
-        ${orderSummarySelect}
-        WHERE o.StoreID = @StoreID
-          AND o.PaymentStatus = @PendingCheckout
-        ORDER BY ISNULL(o.CheckoutRequestedAt, o.OrderDate) ASC
+        SELECT 
+          sub.*,
+          CASE WHEN lastOrder.OrderID IS NOT NULL THEN 1 ELSE 0 END AS EligibleForLoyalty,
+          ISNULL(lastOrder.TotalAmount, 0) AS LastOrderAmount
+        FROM (
+          ${orderSummarySelect}
+          WHERE o.StoreID = @StoreID
+            AND o.PaymentStatus = @PendingCheckout
+        ) sub
+        OUTER APPLY (
+          SELECT TOP 1 TotalAmount, OrderID
+          FROM Orders
+          WHERE CustomerID = sub.CustomerID
+            AND PaymentStatus = @Completed
+            AND OrderDate >= DATEADD(day, -30, GETDATE())
+          ORDER BY OrderDate DESC
+        ) lastOrder
+        ORDER BY ISNULL(sub.CheckoutRequestedAt, sub.OrderDate) ASC
       `);
 
-    return result.recordset.map((order) => summarizeOrder(order, true));
+    return result.recordset.map((order) => {
+      const summary = summarizeOrder(order, true);
+      summary.EligibleForLoyalty = order.EligibleForLoyalty === 1;
+      summary.LastOrderAmount = toNumber(order.LastOrderAmount);
+      return summary;
+    });
   },
 
   getCustomerPastOrders: async (customerId) => {

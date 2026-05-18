@@ -182,7 +182,8 @@ export const OrderController = {
       const cashierId = req.body.cashierId
         ? parseInt(req.body.cashierId)
         : req.user?.userId || null;
-      await OrderService.confirmOrder(parseInt(req.params.id), cashierId);
+      const loyaltyDiscountAmount = req.body.loyaltyDiscountAmount ? parseFloat(req.body.loyaltyDiscountAmount) : 0;
+      await OrderService.confirmOrder(parseInt(req.params.id), cashierId, loyaltyDiscountAmount);
       res.json({ status: true, message: "Order confirmed successfully!" });
     } catch(err) {
       res.status(400).json({ status: false, message: err.message });
