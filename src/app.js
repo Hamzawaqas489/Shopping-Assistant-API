@@ -9,13 +9,13 @@ import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import sharedListRoutes from "./routes/sharedListRoutes.js";
 import friendRoutes from "./routes/friendRoutes.js";
-import userRoutes from "./routes/userRoutes.js"
+import userRoutes from "./routes/userRoutes.js";
 import trolleyRoutes from "./routes/trolleyRoutes.js";
+import saleRoutes from "./routes/saleRoutes.js";
+
 const app = express();
 app.use(cors());
 app.use(express.json());
-
-
 
 app.use(
   "/uploads",
@@ -31,5 +31,6 @@ app.use("/api/shared-lists", sharedListRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/trolleys", trolleyRoutes);
+app.use("/api/sales", saleRoutes);
 
 export default app;

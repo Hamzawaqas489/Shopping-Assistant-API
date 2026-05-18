@@ -142,7 +142,14 @@ const getOrderItems = async (connOrTx, orderId) => {
         p.ImageName,
         p.ImageName AS ProductImage,
         p.QRCode,
-        si.StockQty
+        si.StockQty,
+        si.Price AS OriginalPrice,
+        COALESCE(
+          (SELECT MAX(ss.DiscountPercentage)
+           FROM StoreSales ss
+           WHERE ss.StoreID = o.StoreID AND ss.IsActive = 1
+           AND (ss.ApplyToAll = 1 OR EXISTS (SELECT 1 FROM StoreSaleCategories ssc WHERE ssc.SaleID = ss.SaleID AND ssc.CategoryID = p.CategoryID))
+          ), 0) AS DiscountPercentage
       FROM OrderDetails od
       INNER JOIN Orders o ON o.OrderID = od.OrderID
       INNER JOIN Products p ON p.ProductID = od.ProductID
@@ -486,7 +493,14 @@ export const OrderService = {
             p.Company,
             p.ImageName,
             p.QRCode,
-            si.Price,
+            CAST(
+              si.Price * (1 - COALESCE(
+                (SELECT MAX(ss.DiscountPercentage)
+                 FROM StoreSales ss
+                 WHERE ss.StoreID = si.StoreID AND ss.IsActive = 1
+                 AND (ss.ApplyToAll = 1 OR EXISTS (SELECT 1 FROM StoreSaleCategories ssc WHERE ssc.SaleID = ss.SaleID AND ssc.CategoryID = p.CategoryID))
+                ), 0) / 100.0)
+            AS DECIMAL(10, 2)) AS Price,
             si.StockQty
           FROM Products p
           INNER JOIN StoreInventory si
@@ -860,7 +874,15 @@ export const OrderService = {
           od.ProductID,
           od.Quantity,
           od.PriceAtPurchase AS OldPrice,
-          ISNULL(si.Price, od.PriceAtPurchase) AS CurrentPrice,
+          ISNULL(
+            CAST(si.Price * (1 - COALESCE(
+              (SELECT MAX(ss.DiscountPercentage)
+               FROM StoreSales ss
+               WHERE ss.StoreID = si.StoreID AND ss.IsActive = 1
+               AND (ss.ApplyToAll = 1 OR EXISTS (SELECT 1 FROM StoreSaleCategories ssc WHERE ssc.SaleID = ss.SaleID AND ssc.CategoryID = p.CategoryID))
+              ), 0) / 100.0) AS DECIMAL(10, 2)), 
+            od.PriceAtPurchase
+          ) AS CurrentPrice,
           ISNULL(si.StockQty, 0) AS StockQty,
           p.ProductName,
           p.Company,
@@ -977,7 +999,15 @@ export const OrderService = {
           p.ImageName AS ProductImage,
           p.Company,
           p.QRCode,
-          COALESCE(si.Price, 0) AS Price,
+          COALESCE(
+            CAST(si.Price * (1 - COALESCE(
+              (SELECT MAX(ss.DiscountPercentage)
+               FROM StoreSales ss
+               WHERE ss.StoreID = si.StoreID AND ss.IsActive = 1
+               AND (ss.ApplyToAll = 1 OR EXISTS (SELECT 1 FROM StoreSaleCategories ssc WHERE ssc.SaleID = ss.SaleID AND ssc.CategoryID = p.CategoryID))
+              ), 0) / 100.0) AS DECIMAL(10, 2)), 
+            0
+          ) AS Price,
           COALESCE(si.StockQty, 0) AS StockQty
         FROM SharedListItems sli
         JOIN Products p ON p.ProductID = sli.ProductID
@@ -1047,9 +1077,17 @@ export const OrderService = {
           .input("ProductID", sql.Int, product.ProductID)
           .input("StoreID", sql.Int, order.StoreID)
           .query(`
-            SELECT Price, StockQty
-            FROM StoreInventory
-            WHERE ProductID = @ProductID AND StoreID = @StoreID
+            SELECT 
+              CAST(si.Price * (1 - COALESCE(
+                (SELECT MAX(ss.DiscountPercentage)
+                 FROM StoreSales ss
+                 WHERE ss.StoreID = si.StoreID AND ss.IsActive = 1
+                 AND (ss.ApplyToAll = 1 OR EXISTS (SELECT 1 FROM StoreSaleCategories ssc WHERE ssc.SaleID = ss.SaleID AND ssc.CategoryID = p.CategoryID))
+                ), 0) / 100.0) AS DECIMAL(10, 2)) AS Price,
+              si.StockQty
+            FROM StoreInventory si
+            INNER JOIN Products p ON si.ProductID = p.ProductID
+            WHERE si.ProductID = @ProductID AND si.StoreID = @StoreID
           `);
 
         const inventory = inventoryRes.recordset[0];

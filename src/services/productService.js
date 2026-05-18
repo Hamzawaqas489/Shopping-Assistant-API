@@ -82,8 +82,14 @@ export const ProductService = {
             P.ImageName,
             P.QRCode,
             SI.StockQty,
-            SI.Price,
-            p.CategoryID
+            SI.Price as OriginalPrice,
+            P.CategoryID,
+            COALESCE(
+              (SELECT MAX(DiscountPercentage) 
+               FROM StoreSales ss 
+               WHERE ss.StoreID = SI.StoreID AND ss.IsActive = 1 
+               AND (ss.ApplyToAll = 1 OR EXISTS (SELECT 1 FROM StoreSaleCategories ssc WHERE ssc.SaleID = ss.SaleID AND ssc.CategoryID = P.CategoryID))
+              ), 0) as DiscountPercentage
         FROM StoreInventory SI
         INNER JOIN Products P
             ON SI.ProductID = P.ProductID
@@ -91,7 +97,12 @@ export const ProductService = {
         ORDER BY P.ProductName
       `);
 
-    return result.recordset;
+    return result.recordset.map(row => ({
+      ...row,
+      Price: row.DiscountPercentage > 0 
+        ? Number((row.OriginalPrice * (1 - row.DiscountPercentage / 100)).toFixed(2))
+        : row.OriginalPrice
+    }));
   },
 
   updateStoreProduct: async (data) => {
@@ -152,13 +163,27 @@ export const ProductService = {
     const result = await conn.request()
       .input("ProductID", sql.Int, productId)
       .query(`
-        SELECT S.StoreID, S.StoreName, S.StoreAddress as Address, SI.Price, SI.StockQty
+        SELECT S.StoreID, S.StoreName, S.StoreAddress as Address, SI.Price as OriginalPrice, SI.StockQty,
+          COALESCE(
+            (SELECT MAX(DiscountPercentage) 
+             FROM StoreSales ss 
+             WHERE ss.StoreID = SI.StoreID AND ss.IsActive = 1 
+             AND (ss.ApplyToAll = 1 OR EXISTS (SELECT 1 FROM StoreSaleCategories ssc WHERE ssc.SaleID = ss.SaleID AND ssc.CategoryID = p.CategoryID))
+            ), 0) as DiscountPercentage
         FROM StoreInventory SI
         INNER JOIN Store S ON SI.StoreID = S.StoreID
+        INNER JOIN Products p ON SI.ProductID = p.ProductID
         WHERE SI.ProductID = @ProductID
-        ORDER BY SI.Price ASC
       `);
-    return result.recordset;
+      
+    // Sort by discounted price in JS
+    const records = result.recordset.map(row => ({
+      ...row,
+      Price: row.DiscountPercentage > 0 
+        ? Number((row.OriginalPrice * (1 - row.DiscountPercentage / 100)).toFixed(2))
+        : row.OriginalPrice
+    }));
+    return records.sort((a, b) => a.Price - b.Price);
   },
 
   getById: async (id) => {
