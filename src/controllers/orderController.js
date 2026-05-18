@@ -256,4 +256,20 @@ export const OrderController = {
       res.status(400).json({ status: false, message: err.message });
     }
   },
+
+  syncDetections: async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      const { detections } = req.body;
+
+      if (!detections || !Array.isArray(detections) || detections.length === 0) {
+        return res.status(400).json({ status: false, message: "detections array is required." });
+      }
+
+      const result = await OrderService.syncDetectedItems(orderId, detections);
+      res.json({ status: true, message: "Trolley synced successfully.", data: result });
+    } catch (err) {
+      res.status(400).json({ status: false, message: err.message });
+    }
+  },
 };

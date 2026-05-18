@@ -88,4 +88,7 @@ router.get("/customer/:customerId/pastOrders", OrderController.getCustomerPastOr
 router.get("/:id/reorderDetails", OrderController.getReorderDetails);
 router.post("/reorder", OrderController.submitReorder);
 
+// --- AI Vision Sync Route ---
+router.post("/session/:id/sync-detections", OrderController.syncDetections);
+
 export default router;

@@ -996,4 +996,116 @@ export const OrderService = {
       items: itemsRes.recordset,
     };
   },
+
+  // AI Vision Sync: match detected product names to DB, then SET quantities in OrderDetails
+  syncDetectedItems: async (orderId, detections) => {
+    const conn = await pool;
+
+    // Fetch the order to get StoreID and validate status
+    const orderRes = await conn.request()
+      .input("OrderID", sql.Int, orderId)
+      .query(`
+        SELECT OrderID, StoreID, PaymentStatus
+        FROM Orders
+        WHERE OrderID = @OrderID
+      `);
+
+    const order = orderRes.recordset[0];
+    if (!order) throw new Error("Order not found.");
+    if (order.PaymentStatus !== "InProgress") {
+      throw new Error("Session is not open for modification.");
+    }
+
+    const tx = new sql.Transaction(conn);
+    await tx.begin();
+
+    const syncResults = [];
+
+    try {
+      for (const detection of detections) {
+        const { name, count } = detection;
+
+        if (!name || !count || count <= 0) continue;
+
+        // Find product by exact name in Products table
+        const productRes = await new sql.Request(tx)
+          .input("ProductName", sql.NVarChar(150), name)
+          .query(`
+            SELECT TOP 1 p.ProductID
+            FROM Products p
+            WHERE p.ProductName = @ProductName
+          `);
+
+        const product = productRes.recordset[0];
+        if (!product) {
+          syncResults.push({ name, status: "not_found", count });
+          continue;
+        }
+
+        // Check product is in StoreInventory
+        const inventoryRes = await new sql.Request(tx)
+          .input("ProductID", sql.Int, product.ProductID)
+          .input("StoreID", sql.Int, order.StoreID)
+          .query(`
+            SELECT Price, StockQty
+            FROM StoreInventory
+            WHERE ProductID = @ProductID AND StoreID = @StoreID
+          `);
+
+        const inventory = inventoryRes.recordset[0];
+        if (!inventory) {
+          syncResults.push({ name, status: "not_in_store", count });
+          continue;
+        }
+
+        // Cap count to available stock
+        const syncQty = Math.min(count, toNumber(inventory.StockQty));
+
+        // Check if already in OrderDetails
+        const existingRes = await new sql.Request(tx)
+          .input("OrderID", sql.Int, orderId)
+          .input("ProductID", sql.Int, product.ProductID)
+          .query(`
+            SELECT Quantity FROM OrderDetails
+            WHERE OrderID = @OrderID AND ProductID = @ProductID
+          `);
+
+        if (existingRes.recordset.length > 0) {
+          // UPDATE quantity to detected count
+          await new sql.Request(tx)
+            .input("OrderID", sql.Int, orderId)
+            .input("ProductID", sql.Int, product.ProductID)
+            .input("Quantity", sql.Int, syncQty)
+            .input("Price", sql.Decimal(10, 2), inventory.Price)
+            .query(`
+              UPDATE OrderDetails
+              SET Quantity = @Quantity, PriceAtPurchase = @Price
+              WHERE OrderID = @OrderID AND ProductID = @ProductID
+            `);
+          syncResults.push({ name, status: "updated", count: syncQty });
+        } else {
+          // INSERT new item from AI detection
+          await new sql.Request(tx)
+            .input("OrderID", sql.Int, orderId)
+            .input("ProductID", sql.Int, product.ProductID)
+            .input("Quantity", sql.Int, syncQty)
+            .input("Price", sql.Decimal(10, 2), inventory.Price)
+            .query(`
+              INSERT INTO OrderDetails (OrderID, ProductID, Quantity, PriceAtPurchase, Rating)
+              VALUES (@OrderID, @ProductID, @Quantity, @Price, NULL)
+            `);
+          syncResults.push({ name, status: "added", count: syncQty });
+        }
+      }
+
+      await refreshOrderTotal(tx, orderId);
+      await tx.commit();
+
+      const updatedItems = await getOrderItems(conn, orderId);
+      return { syncResults, updatedItems };
+    } catch (err) {
+      await tx.rollback();
+      throw err;
+    }
+  },
 };
