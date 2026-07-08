@@ -484,6 +484,34 @@ export const OrderService = {
         throw new Error("This trolley session is not open for scanning.");
       }
 
+      const listRestrictedResult = await new sql.Request(tx)
+        .input("ListID", sql.Int, order.ListID)
+        .query(`
+          SELECT TOP 1 *
+          FROM SharedList
+          WHERE ListID = @ListID
+        `);
+        const listRestricted = listRestrictedResult.recordset[0];
+
+        if(listRestricted.isRestricted){
+      const listProductResult = await new sql.Request(tx)
+        .input("ListID", sql.Int, order.ListID)
+        .input("ProductID",sql.Int,productId)
+        .query(`
+          SELECT TOP 1 *
+          FROM SharedListItems
+          WHERE ListID = @ListID
+          AND
+          ProductID = @ProductID
+        `);
+        const listProduct = listProductResult.recordset[0];
+        if(!listProduct)
+        {
+          throw new Error("The Item you scanned is not in the Linked shopping list.");
+        }
+        }
+      
+
       const productResult = await new sql.Request(tx)
         .input("StoreID", sql.Int, order.StoreID)
         .input("ProductID", sql.Int, productId)

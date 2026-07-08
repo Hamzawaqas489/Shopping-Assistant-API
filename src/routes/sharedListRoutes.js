@@ -67,4 +67,14 @@ router.delete(
   SharedListController.delete
 );
 
+router.put(
+  "/getIsRestricted/:listId",
+  SharedListController.getIsRestricted
+);
+
+router.get(
+  "/IsRestricted",
+  SharedListController.getIsRestrictedOrNot
+);
+
 export default router;

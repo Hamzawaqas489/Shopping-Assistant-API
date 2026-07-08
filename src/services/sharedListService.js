@@ -381,5 +381,44 @@ export const SharedListService = {
       await tx.rollback();
       throw err;
     }
+  },
+
+  getIsRestricted: async (listId,isRestricted) =>
+  {
+    const conn = await pool;
+
+    try {
+      // 🚨 Notice we replace p.Price with "0 AS Price" to avoid the Invalid Column error!
+      const result = await conn.request()
+        .input("ListID", sql.Int, listId)
+        .input("isRestricted", sql.Bit,isRestricted)
+        .query(`
+          update SharedList set isRestricted = @isRestricted where ListID = @ListID
+          Select @@ROWCOUNT AS RowsAffected
+          `);
+
+      return result.recordset[0].RowsAffected > 0;
+
+    } catch (err) {
+      throw err;
+    }
+  },
+  getIsRestrictedOrNot: async (listId) =>
+  {
+    const conn = await pool;
+
+    try {
+      // 🚨 Notice we replace p.Price with "0 AS Price" to avoid the Invalid Column error!
+      const result = await conn.request()
+        .input("ListID", sql.Int, listId)
+        .query(`
+          select isRestricted from SharedList where ListID = @ListID
+          `);
+
+      return result.recordset[0]
+
+    } catch (err) {
+      throw err;
+    }
   }
 };

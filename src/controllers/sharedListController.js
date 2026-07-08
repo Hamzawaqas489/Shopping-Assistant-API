@@ -212,5 +212,63 @@ export const SharedListController = {
         message: err.message || "Failed to update list items"
       });
     }
+  },
+  getIsRestricted: async(req,res) => {
+    try {
+      const listId = parseInt(req.params.listId);
+      const isRestricted = req.body;
+
+      const isUpdated = await SharedListService.getIsRestricted(listId,isRestricted);
+
+      if(isUpdated)
+      {
+        return res.status(200).json({
+          status : true,
+          message : "is Restricted updated."
+        });
+      }
+      else{
+        return res.status(404).json({
+          status : true,
+          message : "List not found or cannot update restriction"
+        });
+      }
+
+
+    } catch (err) {
+      return res.status(500).json({
+        status: false,
+        message: err.message || "Failed to update restriction"
+      });
+    }
+  },
+
+  getIsRestrictedOrNot: async(req,res) => {
+    try {
+      const listId = parseInt(req.params.listId);
+
+      const isRestricted = await SharedListService.getIsRestrictedOrNot(listId);
+
+      if(isRestricted == null)
+      {
+        return res.status(404).json({
+          status: false,
+          message:"cannot get the restriction"
+        })
+      }
+
+      return res.status(200).json({
+        status: true,
+        data:isRestricted,
+        message:"Restriction fetched successfully..."
+      })
+
+
+    } catch (err) {
+      return res.status(500).json({
+        status: false,
+        message: err.message || "Failed to fetch restriction"
+      });
+    }
   }
 };
